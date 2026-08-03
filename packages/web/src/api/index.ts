@@ -505,6 +505,78 @@ const app = new Hono()
   // ── Public: current site settings (header/subtitle/footer link) ──────────
   .get("/settings", (c) => c.json(runtimeSettings, 200))
 
+  // ── Diagnostics: is Google OAuth actually configured correctly? ────────────
+  // ?error=invalid_code in the browser only means "the token exchange failed",
+  // so probe Google's token endpoint with a deliberately bogus code. Google
+  // answers invalid_client when the id/secret pair is wrong and invalid_grant
+  // when the credentials are fine and only the code was bad. Leaks nothing.
+  .get("/auth-diagnostics", async (c) => {
+    const clientId = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
+    const clientSecret = (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
+    const baseUrlRaw = (process.env.WEBSITE_URL ?? process.env.RAILWAY_PUBLIC_DOMAIN ?? "").trim();
+    let origin = "";
+    try {
+      origin = new URL(/^https?:\/\//i.test(baseUrlRaw) ? baseUrlRaw : `https://${baseUrlRaw}`).origin;
+    } catch { /* reported below */ }
+
+    const redirectUri = origin ? `${origin}/api/auth/callback/google` : null;
+    const result: Record<string, unknown> = {
+      websiteUrlRaw: baseUrlRaw || null,
+      resolvedOrigin: origin || null,
+      requestOrigin: new URL(c.req.url).origin,
+      redirectUri,
+      clientIdPresent: Boolean(clientId),
+      clientIdSuffixOk: clientId.endsWith(".apps.googleusercontent.com"),
+      clientSecretPresent: Boolean(clientSecret),
+      credentialsHadWhitespace:
+        process.env.GOOGLE_CLIENT_ID !== clientId || process.env.GOOGLE_CLIENT_SECRET !== clientSecret,
+    };
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      result.verdict = "Google credentials or WEBSITE_URL are not fully configured.";
+      return c.json(result, 200);
+    }
+
+    try {
+      const res = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code: "runable-diagnostic-not-a-real-code",
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      const err = (body as any)?.error ?? null;
+      result.googleStatus = res.status;
+      result.googleError = err;
+      result.googleErrorDescription = (body as any)?.error_description ?? null;
+
+      const desc = String((body as any)?.error_description ?? "");
+      if (err === "invalid_grant") {
+        // Google validates the code before the redirect URI, so reaching this
+        // point proves the id/secret pair is good but says nothing about
+        // whether the redirect URI is registered.
+        result.verdict = "CREDENTIALS OK — Google accepts this client id + secret pair. If login still fails, the cause is the redirect URI registration or the authorization code itself; check the Railway logs for the logged callback error.";
+      } else if (err === "invalid_client" && /secret/i.test(desc)) {
+        result.verdict = "BAD CLIENT SECRET — Google accepts the client id but rejects the secret. Re-copy GOOGLE_CLIENT_SECRET from the Google Cloud console into Railway.";
+      } else if (err === "invalid_client") {
+        result.verdict = "BAD CLIENT ID — Google can't find this OAuth client. Check GOOGLE_CLIENT_ID, and that the client still exists and is a 'Web application' client in the right project.";
+      } else {
+        result.verdict = `Unexpected response from Google: ${err ?? res.status} ${desc}`;
+      }
+      result.redirectUriRegistrationChecked = false;
+      result.note = `This probe cannot verify redirect URI registration. Confirm "${redirectUri}" is listed verbatim under the OAuth client's Authorized redirect URIs.`;
+    } catch (e: any) {
+      result.verdict = `Could not reach Google's token endpoint: ${e.message}`;
+    }
+
+    return c.json(result, 200);
+  })
+
   // ── Admin: replace site settings ──────────────────────────────────────────
   .put("/admin/settings", requireAdminAuth, async (c) => {
     try {

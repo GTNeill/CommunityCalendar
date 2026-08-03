@@ -78,3 +78,22 @@ Category data on the volume is **never touched by redeploys** — only the app c
 ```bash
 bun run dev        # Vite dev server on :4200 with HMR
 ```
+
+---
+
+## Troubleshooting Google sign-in
+
+Open **`/api/auth-diagnostics`** on the deployed site. It reports the resolved
+origin, the exact redirect URI the app sends to Google, whether the credentials
+contained stray whitespace, and it probes Google's token endpoint with a bogus
+code to tell a bad client secret apart from a bad client id.
+
+| Symptom | Cause |
+|---|---|
+| `?error=invalid_code` | Google rejected the token exchange. Check the diagnostics verdict, then the Railway logs for the logged callback error. |
+| `BAD CLIENT SECRET` verdict | `GOOGLE_CLIENT_SECRET` is wrong — re-copy it from the Google Cloud console. |
+| `BAD CLIENT ID` verdict | `GOOGLE_CLIENT_ID` is wrong, deleted, or not a "Web application" client. |
+| `CREDENTIALS OK` but login still fails | The redirect URI is almost certainly not registered. Add the `redirectUri` value from the diagnostics output verbatim to the OAuth client's **Authorized redirect URIs**. |
+
+The diagnostics probe cannot verify redirect URI registration, because Google
+validates the authorization code first.

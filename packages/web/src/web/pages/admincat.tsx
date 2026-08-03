@@ -975,9 +975,17 @@ function AdminSignIn({ deniedEmail }: { deniedEmail?: string | null }) {
   const { theme } = useTheme();
   const [busy, setBusy] = useState(false);
 
+  // Better Auth redirects failures to <errorCallbackURL>?error=<code>. Without
+  // this the only symptom is a bare ?error=invalid_code on the home page.
+  const authError = new URLSearchParams(window.location.search).get("error");
+
   const signIn = async () => {
     setBusy(true);
-    await authClient.signIn.social({ provider: "google", callbackURL: "/admincat" });
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/admincat",
+      errorCallbackURL: "/admincat",
+    });
   };
 
   return (
@@ -1024,6 +1032,28 @@ function AdminSignIn({ deniedEmail }: { deniedEmail?: string | null }) {
             color: theme.accent,
           }}>
             {deniedEmail} isn't authorized for this page.
+          </div>
+        )}
+
+        {authError && (
+          <div style={{
+            marginBottom: "20px",
+            padding: "10px 14px",
+            borderRadius: "6px",
+            background: `${theme.accent}18`,
+            border: `1px solid ${theme.accent}44`,
+            fontSize: "12px",
+            color: theme.accent,
+            textAlign: "left",
+          }}>
+            <strong>Google sign-in failed: {authError}</strong>
+            {authError === "invalid_code" && (
+              <div style={{ marginTop: 6, color: theme.textMuted }}>
+                Google rejected the sign-in. Open{" "}
+                <a href="/api/auth-diagnostics" style={{ color: theme.accent }}>/api/auth-diagnostics</a>{" "}
+                to check the credentials and redirect URI.
+              </div>
+            )}
           </div>
         )}
 

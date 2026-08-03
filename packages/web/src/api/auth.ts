@@ -65,14 +65,39 @@ function resolveBaseURL(): string | undefined {
   }
 }
 
+// ── Google credentials ────────────────────────────────────────────────────────
+// Pasting values into a Railway variable very easily picks up a trailing space
+// or newline, which Google rejects at the token-exchange step with
+// invalid_client — surfacing in the browser only as ?error=invalid_code.
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
+const GOOGLE_CLIENT_SECRET = (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
+
+function mask(value: string): string {
+  if (!value) return "<empty>";
+  return `${value.slice(0, 6)}…${value.slice(-4)} (len ${value.length})`;
+}
+
+if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+  console.warn("[auth] GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET missing — Google sign-in is disabled.");
+} else {
+  console.log(`[auth] Google client id: ${mask(GOOGLE_CLIENT_ID)} secret: ${mask(GOOGLE_CLIENT_SECRET)}`);
+  if (!GOOGLE_CLIENT_ID.endsWith(".apps.googleusercontent.com")) {
+    console.warn("[auth] GOOGLE_CLIENT_ID doesn't end in .apps.googleusercontent.com — is it the right value?");
+  }
+  if (process.env.GOOGLE_CLIENT_ID !== GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_SECRET !== GOOGLE_CLIENT_SECRET) {
+    console.warn("[auth] Trimmed surrounding whitespace from the Google credentials — clean them up in Railway.");
+  }
+}
+
 export const auth = betterAuth({
   basePath: "/api/auth",
   baseURL: resolveBaseURL(),
   database: drizzleAdapter(db, { provider: "sqlite" }),
+  logger: { level: "debug" },
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
     },
   },
   secret: resolveAuthSecret(),

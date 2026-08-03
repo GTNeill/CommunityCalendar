@@ -38,9 +38,36 @@ function resolveAuthSecret(): string {
   return generated;
 }
 
+// ── Base URL ──────────────────────────────────────────────────────────────────
+// Better Auth requires an absolute URL and throws on boot otherwise. Railway's
+// RAILWAY_PUBLIC_DOMAIN (and hand-typed WEBSITE_URL values) are bare hostnames
+// like "example.up.railway.app", so normalise to an absolute origin: add the
+// scheme when missing and strip any path/trailing slash.
+function resolveBaseURL(): string | undefined {
+  const raw = (process.env.WEBSITE_URL ?? process.env.RAILWAY_PUBLIC_DOMAIN ?? "").trim();
+  if (!raw) {
+    console.warn("[auth] Neither WEBSITE_URL nor RAILWAY_PUBLIC_DOMAIN is set — social login will not work until one is.");
+    return undefined;
+  }
+
+  const withScheme = /^https?:\/\//i.test(raw)
+    ? raw
+    : `${raw.startsWith("localhost") || raw.startsWith("127.0.0.1") ? "http" : "https"}://${raw}`;
+
+  try {
+    const url = new URL(withScheme);
+    const normalised = url.origin;
+    if (normalised !== raw) console.log(`[auth] baseURL normalised: "${raw}" → "${normalised}"`);
+    return normalised;
+  } catch {
+    console.error(`[auth] WEBSITE_URL "${raw}" could not be parsed as a URL — ignoring it. Set it to a full origin, e.g. https://calendar.40thward.org`);
+    return undefined;
+  }
+}
+
 export const auth = betterAuth({
   basePath: "/api/auth",
-  baseURL: process.env.WEBSITE_URL,
+  baseURL: resolveBaseURL(),
   database: drizzleAdapter(db, { provider: "sqlite" }),
   socialProviders: {
     google: {

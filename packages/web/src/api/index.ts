@@ -44,8 +44,11 @@ function loadSettings(): SiteSettings {
     const raw = fs.readFileSync(SETTINGS_FILE, "utf-8");
     const parsed = JSON.parse(raw);
     return { ...DEFAULT_SETTINGS, ...parsed };
-  } catch (e) {
-    console.error("Failed to load site-settings.json, using defaults:", e);
+  } catch (e: any) {
+    // A missing file is expected on a fresh volume — the defaults are correct
+    // until something is saved from the admin panel. Only real errors are loud.
+    if (e?.code === "ENOENT") console.log(`[settings] No site-settings.json yet at ${SETTINGS_FILE} — using defaults.`);
+    else console.error("Failed to load site-settings.json, using defaults:", e);
     return runtimeSettings ?? DEFAULT_SETTINGS;
   }
 }
@@ -116,9 +119,15 @@ const FALLBACK_CATEGORY: CategoryDef = {
   matchDescription: () => true,
 };
 
+// On a fresh volume DATA_FILE doesn't exist yet. This module is imported before
+// server.ts gets a chance to seed it, so read the bundled copy directly rather
+// than booting with just the fallback category.
+const SEED_FILE = path.resolve(_apiDir, "../../data/categories.json");
+
 function loadCategories(): CategoryDef[] {
   try {
-    const raw = fs.readFileSync(DATA_FILE, "utf-8");
+    const file = fs.existsSync(DATA_FILE) ? DATA_FILE : SEED_FILE;
+    const raw = fs.readFileSync(file, "utf-8");
     const parsed: Omit<CategoryDef, "match">[] = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
       throw new Error("categories.json parsed to an empty/invalid list");

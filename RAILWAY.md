@@ -47,7 +47,7 @@ The volume holds everything the admin panel writes:
 |---|---|---|
 | `PORT` | No | Railway sets this automatically |
 | `DATA_DIR` | **Yes** | Path to the Railway volume mount (e.g. `/data`) |
-| `WEBSITE_URL` | **Yes, for admin login** | Public origin of the deploy, e.g. `https://calendar.40thward.org`. Used to build the Google OAuth redirect URI — it must exactly match an Authorized redirect URI in the Google Cloud console (`$WEBSITE_URL/api/auth/callback/google`) |
+| `WEBSITE_URL` | **Yes, for admin login** | Public origin of the deploy, e.g. `https://calendar.40thward.org`. Used to build the Google OAuth redirect URI — it must exactly match an Authorized redirect URI in the Google Cloud console (`$WEBSITE_URL/api/auth/callback/google`). A bare hostname (`calendar.40thward.org`) is accepted and `https://` is added automatically; falls back to `RAILWAY_PUBLIC_DOMAIN` if unset |
 | `GOOGLE_CLIENT_ID` | **Yes, for admin login** | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | **Yes, for admin login** | Google OAuth client secret |
 | `BETTER_AUTH_SECRET` | No | Session signing secret. If unset, a random one is generated once and persisted to `$DATA_DIR/.auth-secret` |

@@ -25,6 +25,14 @@ git push -u origin main
    ```
 4. Redeploy — categories saved in the admin panel will now survive deploys
 
+The volume holds everything the admin panel writes:
+
+| Path | Contents |
+|---|---|
+| `$DATA_DIR/categories.json` | Categories, colors, keywords, icons |
+| `$DATA_DIR/site-settings.json` | Site title, calendar feeds, display options |
+| `$DATA_DIR/icons/` | Uploaded category icon images (PNG, auto-created on first upload) |
+
 ### 4. Set your domain
 1. In the service settings → **Networking** → **Generate Domain**
 2. Or add a custom domain (e.g. `calendar.40thward.org`) and point your DNS CNAME there

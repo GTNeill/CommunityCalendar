@@ -533,7 +533,7 @@ function CategoryFilterBar({
               transition: "all 0.15s", outline: "none",
             }}
           >
-            <span>{icon}</span>
+            <CategoryIcon icon={icon} size={12} />
             <span>{label}</span>
           </button>
         );

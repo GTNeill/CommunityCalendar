@@ -2,6 +2,7 @@ import type { CalEvent } from "../lib/calendarUtils";
 import { fmtDayNum, fmtMonthShort, fmtWeekday, fmtTime, fmtDuration, linkifyDescription, googleMapsUrl, googleCalendarAddUrl } from "../lib/calendarUtils";
 import { MapPin, Clock, ExternalLink, User, Calendar, AlarmClock, CalendarPlus } from "lucide-react";
 import { useTheme } from "../lib/theme";
+import CategoryIcon from "./CategoryIcon";
 /**
  * Static, wide version of the Google Calendar–style event popup.
  * Used for search results — same visual language as the hover popup
@@ -83,7 +84,7 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
               marginBottom: 4,
             }}
           >
-            {ev.categoryIcon} {ev.categoryLabel}
+            <CategoryIcon icon={ev.categoryIcon} size={12} /> {ev.categoryLabel}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <div

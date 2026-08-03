@@ -20,6 +20,7 @@ const _defaultDataDir = path.resolve(_apiDir, "../../data");
 const DATA_DIR  = process.env.DATA_DIR ?? _defaultDataDir;
 const DATA_FILE = path.join(DATA_DIR, "categories.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "site-settings.json");
+const ICONS_DIR = path.join(DATA_DIR, "icons");
 
 // ── Site settings persistence (header/subtitle/footer link) ──────────────────
 export interface SiteSettings {
@@ -434,6 +435,62 @@ const app = new Hono()
     const email = session?.user?.email ?? null;
     const authorized = !!email && ADMIN_EMAIL_ALLOWLIST.includes(email);
     return c.json({ signedIn: !!session, email, authorized }, 200);
+  })
+
+  // ── Public: serve an uploaded category icon ──────────────────────────────
+  .get("/icons/:file", (c) => {
+    const file = c.req.param("file");
+    // Guard against path traversal — only allow simple generated filenames.
+    if (!/^[a-zA-Z0-9._-]+\.png$/.test(file)) return c.json({ error: "Not found" }, 404);
+    const full = path.join(ICONS_DIR, file);
+    if (!fs.existsSync(full)) return c.json({ error: "Not found" }, 404);
+    const buf = fs.readFileSync(full);
+    return new Response(new Uint8Array(buf), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  })
+
+  // ── Admin: upload a category icon (client sends a pre-scaled PNG data URL) ──
+  .post("/admin/icons", requireAdminAuth, async (c) => {
+    try {
+      const body = await c.req.json() as { dataUrl?: string; key?: string };
+      const dataUrl = body.dataUrl ?? "";
+      const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+      if (!match) return c.json({ error: "Expected a base64 PNG data URL" }, 400);
+
+      const buf = Buffer.from(match[1], "base64");
+      // Scaled client-side to 128x128 max, so anything large is suspicious.
+      if (buf.length > 512 * 1024) return c.json({ error: "Icon too large" }, 400);
+
+      // Validate the PNG signature and read dimensions straight out of the IHDR
+      // chunk (bytes 16-23) so we don't need an image library on the server.
+      const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      if (buf.length < 24 || !buf.subarray(0, 8).equals(PNG_SIG)) {
+        return c.json({ error: "Not a valid PNG" }, 400);
+      }
+      const width = buf.readUInt32BE(16);
+      const height = buf.readUInt32BE(20);
+      if (width < 1 || height < 1 || width > 512 || height > 512) {
+        return c.json({ error: `Icon must be 512x512 or smaller (got ${width}x${height})` }, 400);
+      }
+
+      const slug = (body.key ?? "icon").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 32) || "icon";
+      const filename = `${slug}-${Date.now()}.png`;
+
+      fs.mkdirSync(ICONS_DIR, { recursive: true });
+      const full = path.join(ICONS_DIR, filename);
+      const tmp = `${full}.tmp-${process.pid}`;
+      fs.writeFileSync(tmp, buf);
+      fs.renameSync(tmp, full);
+
+      return c.json({ ok: true, url: `/api/icons/${filename}` }, 200);
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
   })
 
   // ── Public: current site settings (header/subtitle/footer link) ──────────

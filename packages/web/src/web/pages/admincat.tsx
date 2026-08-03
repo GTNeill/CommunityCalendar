@@ -1,7 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { flushSync } from "react-dom";
 import { useTheme } from "../lib/theme";
-import { authClient } from "../lib/auth";
+import { authClient, getToken } from "../lib/auth";
+import CategoryIcon, { isImageIcon } from "../components/CategoryIcon";
+
+/**
+ * fetch() for admin endpoints. Sessions normally ride on the Better Auth
+ * cookie, but a stored bearer token is also honoured when present.
+ */
+function adminFetch(input: string, init: RequestInit = {}) {
+  const token = getToken();
+  const headers = new Headers(init.headers ?? {});
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return fetch(input, { ...init, headers, credentials: "include" });
+}
 
 interface Category {
   key: string;
@@ -11,6 +23,28 @@ interface Category {
   group: string;
   order: number;
   keywords: string[];
+}
+
+/**
+ * Warns before a refresh/tab-close/navigation while there are unsaved edits.
+ * Browsers show their own generic confirmation dialog for this.
+ */
+function useUnsavedGuard(dirty: boolean) {
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+}
+
+/** Confirm before following an in-app link that would discard unsaved edits. */
+function confirmDiscard(dirty: boolean) {
+  return !dirty || window.confirm("You have unsaved changes. Leave this page and discard them?");
 }
 
 const GROUP_OPTIONS = [
@@ -122,6 +156,157 @@ function KeywordEditor({
   );
 }
 
+// ── Icon field — emoji text input + image upload (scaled client-side) ─────────
+const ICON_PX = 128; // uploaded icons are scaled to fit this box before upload
+
+function IconField({
+  icon,
+  catKey,
+  disabled,
+  onChange,
+  theme,
+  inputStyle,
+}: {
+  icon: string;
+  catKey: string;
+  disabled?: boolean;
+  onChange: (icon: string) => void;
+  theme: ReturnType<typeof useTheme>["theme"];
+  inputStyle: React.CSSProperties;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const isImage = isImageIcon(icon);
+
+  /** Scale the chosen image to fit ICON_PX x ICON_PX (aspect preserved, transparent padding). */
+  const scaleToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read file"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Not a valid image"));
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = ICON_PX;
+          canvas.height = ICON_PX;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return reject(new Error("Canvas unavailable"));
+          const ratio = Math.min(ICON_PX / img.width, ICON_PX / img.height);
+          const w = Math.round(img.width * ratio);
+          const h = Math.round(img.height * ratio);
+          ctx.drawImage(img, Math.round((ICON_PX - w) / 2), Math.round((ICON_PX - h) / 2), w, h);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.src = String(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      const dataUrl = await scaleToDataUrl(file);
+      const res = await adminFetch("/api/admin/icons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl, key: catKey }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `Upload failed (${res.status})`);
+      onChange(json.url);
+    } catch (e: any) {
+      setErr(e.message ?? "Upload failed");
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      {isImage ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "36px",
+            border: `1px solid ${theme.border}`,
+            borderRadius: "6px",
+            background: theme.surface,
+          }}
+          title={icon}
+        >
+          <img src={icon} alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
+        </div>
+      ) : (
+        <input
+          value={icon}
+          onChange={e => onChange(e.target.value)}
+          disabled={disabled}
+          placeholder="🏛️"
+          title="Paste an emoji, or upload an image below"
+          style={{ ...inputStyle, fontSize: "20px", textAlign: "center", padding: "4px" }}
+        />
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+        onChange={e => handleFile(e.target.files?.[0])}
+        style={{ display: "none" }}
+      />
+
+      <div style={{ display: "flex", gap: "3px" }}>
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={disabled || busy}
+          title="Upload an image to use as this category's icon (scaled automatically)"
+          style={{
+            flex: 1,
+            padding: "3px 4px",
+            fontSize: "9px",
+            border: `1px solid ${theme.border}`,
+            borderRadius: "4px",
+            background: "transparent",
+            color: theme.textMuted,
+            cursor: disabled || busy ? "not-allowed" : "pointer",
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+          }}
+        >
+          {busy ? "…" : isImage ? "Replace" : "Upload"}
+        </button>
+        {isImage && (
+          <button
+            onClick={() => onChange("")}
+            disabled={disabled}
+            title="Remove the image and go back to an emoji icon"
+            style={{
+              padding: "3px 5px",
+              fontSize: "9px",
+              border: `1px solid ${theme.border}`,
+              borderRadius: "4px",
+              background: "transparent",
+              color: "#e05555",
+              cursor: disabled ? "not-allowed" : "pointer",
+            }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {err && <span style={{ fontSize: "9px", color: "#e05555" }}>{err}</span>}
+    </div>
+  );
+}
+
 // ── Single category row ───────────────────────────────────────────────────────
 function CategoryRow({
   cat,
@@ -196,25 +381,28 @@ function CategoryRow({
         <label style={labelStyle}>Key</label>
         <input
           value={cat.key}
-          readOnly={!cat.key.startsWith("__new")}
           onChange={e => onChange({ ...cat, key: e.target.value })}
+          disabled={isOther}
+          title={isOther ? 'The "other" fallback key cannot be renamed' : "Category key — lowercase identifier, must be unique"}
           style={{
             ...inputStyle,
-            background: !cat.key.startsWith("__new") ? `${theme.textFaint}22` : theme.surface,
             fontFamily: "monospace",
             fontSize: "11px",
+            opacity: isOther ? 0.5 : 1,
           }}
         />
       </div>
 
-      {/* Icon */}
+      {/* Icon — emoji text or an uploaded image */}
       <div>
         <label style={labelStyle}>Icon</label>
-        <input
-          value={cat.icon}
-          onChange={e => onChange({ ...cat, icon: e.target.value })}
+        <IconField
+          icon={cat.icon}
+          catKey={cat.key}
           disabled={isOther}
-          style={{ ...inputStyle, fontSize: "20px", textAlign: "center", padding: "4px" }}
+          onChange={icon => onChange({ ...cat, icon })}
+          theme={theme}
+          inputStyle={inputStyle}
         />
       </div>
 
@@ -330,8 +518,10 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
   const [status, setStatus] = useState<{ msg: string; ok: boolean } | null>(null);
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useUnsavedGuard(dirty);
+
   useEffect(() => {
-    fetch("/api/settings")
+    adminFetch("/api/settings")
       .then(r => r.json())
       .then((data: SiteSettings) => setSettings(data))
       .catch(e => setStatus({ msg: `Failed to load settings: ${e.message}`, ok: false }));
@@ -363,7 +553,7 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
     if (!settings) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/settings", {
+      const res = await adminFetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
@@ -470,8 +660,10 @@ function AdminCatInner() {
   const [dirty, setDirty] = useState(false);
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useUnsavedGuard(dirty);
+
   useEffect(() => {
-    fetch("/api/admin/categories")
+    adminFetch("/api/admin/categories")
       .then(r => r.json())
       .then((data: Category[]) => {
         setCategories(data.sort((a, b) => a.order - b.order));
@@ -537,9 +729,22 @@ function AdminCatInner() {
 
     setSaving(true);
     try {
-      const keys = categories.map(c =>
-        c.key.startsWith("__new") ? c.label.toLowerCase().replace(/\s+/g, "_") : c.key
-      );
+      // Keys are editable, so normalise whatever was typed: lowercase, and
+      // anything that isn't a-z/0-9 collapses to an underscore.
+      const normaliseKey = (c: Category) =>
+        (c.key.startsWith("__new") ? c.label : c.key)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+
+      const keys = categories.map(normaliseKey);
+
+      if (keys.some(k => !k)) {
+        showStatus("Every category needs a key — fix before saving.", false);
+        setSaving(false);
+        return;
+      }
+
       const hasDupe = keys.some((k, i) => keys.indexOf(k) !== i);
       if (hasDupe) {
         showStatus("Duplicate category keys — fix before saving.", false);
@@ -549,11 +754,11 @@ function AdminCatInner() {
 
       const payload = categories.map((c, i) => ({
         ...c,
-        key: c.key.startsWith("__new") ? c.label.toLowerCase().replace(/[^a-z0-9]/g, "_") : c.key,
+        key: normaliseKey(c),
         order: i,
       }));
 
-      const res = await fetch("/api/admin/categories", {
+      const res = await adminFetch("/api/admin/categories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -563,7 +768,7 @@ function AdminCatInner() {
       showStatus(`Saved ${data.count} categories.`, true);
       setDirty(false);
 
-      const fresh = await fetch("/api/admin/categories").then(r => r.json());
+      const fresh = await adminFetch("/api/admin/categories").then(r => r.json());
       setCategories((fresh as Category[]).sort((a, b) => a.order - b.order));
     } catch (e: any) {
       showStatus(e.message, false);
@@ -598,14 +803,18 @@ function AdminCatInner() {
         backdropFilter: "blur(8px)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <a href="/" style={{
-            color: theme.textMuted,
-            textDecoration: "none",
-            fontSize: "13px",
-            padding: "6px 10px",
-            border: `1px solid ${theme.border}`,
-            borderRadius: "6px",
-          }}>← Calendar</a>
+          <a
+            href="/"
+            onClick={e => { if (!confirmDiscard(dirty)) e.preventDefault(); }}
+            style={{
+              color: theme.textMuted,
+              textDecoration: "none",
+              fontSize: "13px",
+              padding: "6px 10px",
+              border: `1px solid ${theme.border}`,
+              borderRadius: "6px",
+            }}
+          >← Calendar</a>
           <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: theme.textPrimary }}>
             Category Manager
           </h1>
@@ -742,7 +951,7 @@ function AdminCatInner() {
                         fontSize: "12px",
                         color: c.color,
                       }}>
-                        {c.icon} {c.label}
+                        <CategoryIcon icon={c.icon} size={13} /> {c.label}
                       </span>
                     ))}
                     {cats.length === 0 && (
@@ -855,7 +1064,7 @@ export default function AdminCat() {
   const [check, setCheck] = useState<AuthCheck | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/whoami")
+    adminFetch("/api/admin/whoami")
       .then(r => r.json())
       .then(setCheck)
       .catch(() => setCheck({ signedIn: false, email: null, authorized: false }));

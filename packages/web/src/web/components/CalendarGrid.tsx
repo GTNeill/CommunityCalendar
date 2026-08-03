@@ -8,6 +8,7 @@ import { Clock, MapPin, User, Calendar, AlarmClock, ExternalLink, X, CalendarPlu
 import { useTheme } from "../lib/theme";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useCategories } from "../hooks/useCategories";
+import CategoryIcon from "./CategoryIcon";
 
 type RangeUnit = "week" | "month";
 
@@ -121,7 +122,7 @@ function EventPopup({
       )}
       <div style={{ padding: "12px 14px 8px" }}>
         <div style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: cat, marginBottom: 3 }}>
-          {ev.categoryIcon} {ev.categoryLabel}
+          <CategoryIcon icon={ev.categoryIcon} size={12} /> {ev.categoryLabel}
         </div>
         <div style={{ fontSize: "0.95rem", fontWeight: 700, lineHeight: 1.3, color: theme.textPrimary }}>
           {ev.title}
@@ -609,7 +610,7 @@ function CategoryFilterBar({ events, selected, onChange }: FilterBarProps) {
               outline: "none",
             }}
           >
-            <span>{cat.icon}</span>
+            <CategoryIcon icon={cat.icon} size={13} />
             <span>{cat.label}</span>
           </button>
         );

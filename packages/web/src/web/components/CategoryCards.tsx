@@ -7,6 +7,7 @@ import { MapPin, Clock, ExternalLink, User, Calendar, AlarmClock, X, CalendarPlu
 import { useTheme } from "../lib/theme";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useCategories, buildCategoryGroups } from "../hooks/useCategories";
+import CategoryIcon from "./CategoryIcon";
 
 interface Props {
   grouped: Record<string, CalEvent[]>;
@@ -146,7 +147,7 @@ function EventPopup({
             marginBottom: 4,
           }}
         >
-          {ev.categoryIcon} {ev.categoryLabel}
+          <CategoryIcon icon={ev.categoryIcon} size={12} /> {ev.categoryLabel}
         </div>
         <div
           style={{
@@ -692,7 +693,7 @@ export default function CategoryCards({ grouped }: Props) {
                     flexShrink: 0,
                   }}
                 >
-                  <span style={{ fontSize: "1.2rem" }}>{meta.icon}</span>
+                  <CategoryIcon icon={meta.icon} size={20} />
                   <span
                     style={{
                       fontFamily: theme.fontBody,

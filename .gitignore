@@ -73,3 +73,6 @@ scripts/
 packages/mobile/scripts/*
 !packages/mobile/scripts/generate-ios-certs.py
 .env.railway
+
+# Uploaded category icons (live on the persistent volume, not in git)
+packages/web/data/icons/

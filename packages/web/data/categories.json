@@ -228,7 +228,9 @@
       "american blues theater",
       "the best damn thing",
       "art",
-      "arts"
+      "arts",
+      "bramble",
+      "song"
     ]
   },
   {
@@ -312,7 +314,8 @@
       "wellness walk.*master",
       "rockwell.*garden",
       "greater rockwell",
-      "garden.*walk"
+      "garden.*walk",
+      "parks"
     ]
   },
   {
@@ -504,12 +507,26 @@
     ]
   },
   {
+    "key": "s",
+    "label": "Garage/Yard Sales",
+    "icon": "💲",
+    "color": "#41e655",
+    "group": "community",
+    "order": 15,
+    "keywords": [
+      "garage",
+      "yard",
+      "rummage",
+      "sale"
+    ]
+  },
+  {
     "key": "other",
     "label": "Other",
     "icon": "📌",
     "color": "#5A5A5A",
     "group": "community",
-    "order": 15,
+    "order": 16,
     "keywords": []
   }
 ]

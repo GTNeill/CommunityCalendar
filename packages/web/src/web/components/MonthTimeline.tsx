@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import type { CalEvent } from "../lib/calendarUtils";
 import { getDayRange, isSameDay, fmtTime, parseLocalDate } from "../lib/calendarUtils";
+import CategoryIcon from "./CategoryIcon";
 
 interface Props {
   events: CalEvent[];
@@ -156,7 +157,7 @@ export default function MonthTimeline({ events, start, end }: Props) {
         ).map(([key, { label, color, icon }]) => (
           <div key={key} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: color }} />
-            <span className="text-[10px]" style={{ color: "#5A5A5A" }}>{icon} {label}</span>
+            <span className="text-[10px]" style={{ color: "#5A5A5A", display: "inline-flex", alignItems: "center", gap: 3 }}><CategoryIcon icon={icon} size={11} /> {label}</span>
           </div>
         ))}
       </div>

@@ -9,9 +9,9 @@ const indexPath = `${distDir}/index.html`;
 // ── Volume seed ───────────────────────────────────────────────────────────────
 // If DATA_DIR is a Railway volume mount and categories.json doesn't exist yet,
 // copy the bundled seed file from the repo so the first deploy isn't empty.
-const dataDir  = process.env.DATA_DIR ?? path.resolve(import.meta.dir, "../../data");
+const dataDir  = process.env.DATA_DIR ?? path.resolve(import.meta.dir, "../data");
 const dataFile = path.join(dataDir, "categories.json");
-const seedFile = path.resolve(import.meta.dir, "../../data/categories.json");
+const seedFile = path.resolve(import.meta.dir, "../data/categories.json");
 
 if (!fs.existsSync(dataFile) && fs.existsSync(seedFile)) {
   fs.mkdirSync(dataDir, { recursive: true });

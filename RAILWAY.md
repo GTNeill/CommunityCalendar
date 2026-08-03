@@ -32,6 +32,8 @@ The volume holds everything the admin panel writes:
 | `$DATA_DIR/categories.json` | Categories, colors, keywords, icons |
 | `$DATA_DIR/site-settings.json` | Site title, calendar feeds, display options |
 | `$DATA_DIR/icons/` | Uploaded category icon images (PNG, auto-created on first upload) |
+| `$DATA_DIR/auth.db` | Admin login sessions (SQLite, auto-created when `DATABASE_URL` is unset) |
+| `$DATA_DIR/.auth-secret` | Session signing secret (auto-generated when `BETTER_AUTH_SECRET` is unset) |
 
 ### 4. Set your domain
 1. In the service settings → **Networking** → **Generate Domain**
@@ -44,7 +46,16 @@ The volume holds everything the admin panel writes:
 | Variable | Required | Description |
 |---|---|---|
 | `PORT` | No | Railway sets this automatically |
-| `DATA_DIR` | Recommended | Path to Railway volume mount (e.g. `/data`) |
+| `DATA_DIR` | **Yes** | Path to the Railway volume mount (e.g. `/data`) |
+| `WEBSITE_URL` | **Yes, for admin login** | Public origin of the deploy, e.g. `https://calendar.40thward.org`. Used to build the Google OAuth redirect URI — it must exactly match an Authorized redirect URI in the Google Cloud console (`$WEBSITE_URL/api/auth/callback/google`) |
+| `GOOGLE_CLIENT_ID` | **Yes, for admin login** | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | **Yes, for admin login** | Google OAuth client secret |
+| `BETTER_AUTH_SECRET` | No | Session signing secret. If unset, a random one is generated once and persisted to `$DATA_DIR/.auth-secret` |
+| `DATABASE_URL` | No | Only for an external Turso/libSQL database. **Leave it unset on Railway** — the app then uses `$DATA_DIR/auth.db` and creates the auth tables itself. Setting it to an empty string crashes the container at boot |
+| `DATABASE_AUTH_TOKEN` | No | Auth token, only when `DATABASE_URL` points at a remote Turso database |
+
+> **Note:** the public calendar (categories, event feeds, embedding) needs nothing but `DATA_DIR`.
+> The Google variables are only required for the `/admincat` admin panel login.
 
 ---
 

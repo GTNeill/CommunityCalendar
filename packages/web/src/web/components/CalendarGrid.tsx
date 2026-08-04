@@ -9,6 +9,7 @@ import { useTheme } from "../lib/theme";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useCategories } from "../hooks/useCategories";
 import CategoryIcon from "./CategoryIcon";
+import FilterTip from "./FilterTip";
 
 type RangeUnit = "week" | "month";
 
@@ -556,6 +557,8 @@ function CategoryFilterBar({ events, selected, onChange }: FilterBarProps) {
   if (cats.length === 0) return null;
 
   return (
+    <>
+    <FilterTip />
     <div
       style={{
         display: "flex",
@@ -616,6 +619,7 @@ function CategoryFilterBar({ events, selected, onChange }: FilterBarProps) {
         );
       })}
     </div>
+    </>
   );
 }
 

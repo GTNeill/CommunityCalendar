@@ -16,6 +16,13 @@ function adminFetch(input: string, init: RequestInit = {}) {
 }
 
 interface Category {
+  /**
+   * Stable client-only row identity. The `key` field is user-editable, so it
+   * cannot be used as the React key — it changes on every keystroke, which
+   * remounts the row and drops focus after a single character. Never sent to
+   * the server.
+   */
+  uid: string;
   key: string;
   label: string;
   icon: string;
@@ -23,6 +30,17 @@ interface Category {
   group: string;
   order: number;
   keywords: string[];
+}
+
+/** Category as stored/returned by the API — no client-only uid. */
+type StoredCategory = Omit<Category, "uid">;
+
+let uidCounter = 0;
+function newUid() { return `row_${Date.now().toString(36)}_${++uidCounter}`; }
+function withUid(c: StoredCategory): Category { return { ...c, uid: newUid() }; }
+function stripUid(c: Category): StoredCategory {
+  const { uid: _uid, ...rest } = c;
+  return rest;
 }
 
 /**
@@ -665,8 +683,8 @@ function AdminCatInner() {
   useEffect(() => {
     adminFetch("/api/admin/categories")
       .then(r => r.json())
-      .then((data: Category[]) => {
-        setCategories(data.sort((a, b) => a.order - b.order));
+      .then((data: StoredCategory[]) => {
+        setCategories(data.sort((a, b) => a.order - b.order).map(withUid));
         setLoading(false);
       })
       .catch(e => {
@@ -681,22 +699,28 @@ function AdminCatInner() {
     statusTimer.current = setTimeout(() => setStatus(null), 4000);
   };
 
-  const update = useCallback((idx: number, cat: Category) => {
-    setCategories(prev => prev.map((c, i) => i === idx ? cat : c));
+  // Rows render from `displayList`, which pins "other" to the end, so a
+  // positional index into `categories` can point at the wrong row. Address
+  // rows by their stable uid instead.
+  const update = useCallback((uid: string, cat: Category) => {
+    setCategories(prev => prev.map(c => c.uid === uid ? cat : c));
     setDirty(true);
   }, []);
 
-  const remove = useCallback((idx: number) => {
-    setCategories(prev => prev.filter((_, i) => i !== idx));
+  const remove = useCallback((uid: string) => {
+    setCategories(prev => prev.filter(c => c.uid !== uid));
     setDirty(true);
   }, []);
 
-  const move = useCallback((idx: number, dir: -1 | 1) => {
+  const move = useCallback((uid: string, dir: -1 | 1) => {
     setCategories(prev => {
+      const from = prev.findIndex(c => c.uid === uid);
+      const to = from + dir;
+      if (from === -1 || to < 0 || to >= prev.length) return prev;
+      // Never reorder across the "other" fallback, which always sorts last.
+      if (prev[to].key === "other") return prev;
       const next = [...prev];
-      const target = idx + dir;
-      if (target < 0 || target >= next.length) return prev;
-      [next[idx], next[target]] = [next[target], next[idx]];
+      [next[from], next[to]] = [next[to], next[from]];
       return next;
     });
     setDirty(true);
@@ -704,6 +728,7 @@ function AdminCatInner() {
 
   const addNew = () => {
     const newCat: Category = {
+      uid: newUid(),
       key: newKey(),
       label: "New Category",
       icon: "📁",
@@ -753,7 +778,7 @@ function AdminCatInner() {
       }
 
       const payload = categories.map((c, i) => ({
-        ...c,
+        ...stripUid(c),
         key: normaliseKey(c),
         order: i,
       }));
@@ -769,7 +794,7 @@ function AdminCatInner() {
       setDirty(false);
 
       const fresh = await adminFetch("/api/admin/categories").then(r => r.json());
-      setCategories((fresh as Category[]).sort((a, b) => a.order - b.order));
+      setCategories((fresh as StoredCategory[]).sort((a, b) => a.order - b.order).map(withUid));
     } catch (e: any) {
       showStatus(e.message, false);
     } finally {
@@ -903,13 +928,13 @@ function AdminCatInner() {
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {displayList.map((cat, idx) => (
               <CategoryRow
-                key={cat.key}
+                key={cat.uid}
                 cat={cat}
                 idx={idx}
                 total={displayList.length}
-                onChange={c => update(idx, c)}
-                onDelete={() => remove(idx)}
-                onMove={dir => move(idx, dir)}
+                onChange={c => update(cat.uid, c)}
+                onDelete={() => remove(cat.uid)}
+                onMove={dir => move(cat.uid, dir)}
                 theme={theme}
               />
             ))}
@@ -940,7 +965,7 @@ function AdminCatInner() {
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                     {cats.map(c => (
-                      <span key={c.key} style={{
+                      <span key={c.uid} style={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: "5px",

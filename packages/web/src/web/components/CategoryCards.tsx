@@ -8,6 +8,7 @@ import { useTheme } from "../lib/theme";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useCategories, buildCategoryGroups } from "../hooks/useCategories";
 import CategoryIcon from "./CategoryIcon";
+import FilterTip from "./FilterTip";
 
 interface Props {
   grouped: Record<string, CalEvent[]>;
@@ -607,15 +608,7 @@ export default function CategoryCards({ grouped }: Props) {
 
   return (
     <div>
-      <div style={{
-        fontSize: "0.72rem",
-        color: theme.textMuted,
-        marginBottom: "8px",
-        lineHeight: 1.5,
-      }}>
-        Tap a category to show only that type of event. Tap more to add them to the view.
-        Tap the same one again to remove it, or tap <strong style={{ color: theme.textMuted }}>All</strong> to reset.
-      </div>
+      <FilterTip />
       <CategoryFilterBar catMeta={catMeta} selected={selectedCats} onChange={setSelectedCats} />
 
       {visibleCats.length === 0 ? (

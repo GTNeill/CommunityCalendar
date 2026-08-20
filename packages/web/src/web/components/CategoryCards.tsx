@@ -547,10 +547,93 @@ function CategoryFilterBar({
    Category Cards grid
 ───────────────────────────────────────────── */
 
-const MAX_VISIBLE = 5;
+// Cards are sized for this many event rows; 5 or more events scroll.
+// Keep in sync with MAX_VISIBLE_ROWS in the WPCalendarCats plugin (assets/wpcc.js).
+const MAX_VISIBLE = 4;
 
-// Approx height of one event row — used to size the scrollable area
-const ROW_HEIGHT_PX = 90;
+/**
+ * Scrollable card body sized to exactly MAX_VISIBLE rows.
+ *
+ * Row heights vary (an event may or may not have a location line, a duration
+ * chip, or sit under the "Earlier this period" divider), so a fixed pixel
+ * height can't reliably equal "four items". We measure the first MAX_VISIBLE
+ * children instead and cap the container there. Anything beyond that scrolls,
+ * which keeps every card in a grid row the same height.
+ */
+function CardEventList({
+  color,
+  children,
+}: {
+  color: string;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [maxHeight, setMaxHeight] = useState<number | null>(null);
+
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const kids = Array.from(el.children) as HTMLElement[];
+
+    // Walk the children until MAX_VISIBLE event rows are covered. The
+    // "Earlier this period" divider counts towards the height but not the row
+    // budget.
+    let seen = 0;
+    let last: HTMLElement | null = null;
+    let covered = 0;
+
+    for (let i = 0; i < kids.length; i++) {
+      const isDivider = kids[i].dataset.divider === "true";
+      if (!isDivider && seen >= MAX_VISIBLE) break;
+      last = kids[i];
+      covered = i + 1;
+      if (!isDivider) seen++;
+    }
+
+    if (!last || covered >= kids.length) {
+      setMaxHeight(null);
+      return;
+    }
+
+    // Measure from the container's top edge to the last visible row's bottom
+    // edge rather than summing offsetHeight, so row margins are included.
+    // Rects are viewport-relative, so unscroll first.
+    const prevScroll = el.scrollTop;
+    el.scrollTop = 0;
+    const h =
+      last.getBoundingClientRect().bottom -
+      el.getBoundingClientRect().top +
+      parseFloat(getComputedStyle(el).paddingBottom);
+    el.scrollTop = prevScroll;
+
+    setMaxHeight(Math.ceil(h));
+  }, []);
+
+  useEffect(() => {
+    // Measure after layout settles (fonts, wrapped titles).
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measure);
+    };
+  }, [measure, children]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        overflowY: maxHeight === null ? "visible" : "auto",
+        maxHeight: maxHeight === null ? "none" : maxHeight,
+        padding: "6px 0 8px",
+        scrollbarWidth: "thin",
+        scrollbarColor: `${color}66 transparent`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function CategoryCards({ grouped }: Props) {
   const { theme } = useTheme();
@@ -658,9 +741,6 @@ export default function CategoryCards({ grouped }: Props) {
 
             // Total visible = future events up front; past events scroll below
             const totalEvents = allEvents.length;
-            const hasMore = futureEvents.length > MAX_VISIBLE || pastEvents.length > 0;
-            // Scroll area height: show exactly MAX_VISIBLE rows, scroll for the rest
-            const scrollHeight = MAX_VISIBLE * ROW_HEIGHT_PX;
 
             return (
               <div
@@ -733,15 +813,7 @@ export default function CategoryCards({ grouped }: Props) {
                     No events in this range
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      overflowY: hasMore ? "auto" : "visible",
-                      maxHeight: hasMore ? scrollHeight : "none",
-                      padding: "6px 0 8px",
-                      scrollbarWidth: "thin",
-                      scrollbarColor: `${meta.color}66 transparent`,
-                    }}
-                  >
+                  <CardEventList color={meta.color}>
                     {/* Future events (today onward) */}
                     {futureEvents.map(ev => (
                       <EventRow key={ev.id} ev={ev} categoryColor={meta.color} />
@@ -751,6 +823,7 @@ export default function CategoryCards({ grouped }: Props) {
                     {pastEvents.length > 0 && (
                       <>
                         <div
+                          data-divider="true"
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -780,7 +853,7 @@ export default function CategoryCards({ grouped }: Props) {
                         ))}
                       </>
                     )}
-                  </div>
+                  </CardEventList>
                 )}
               </div>
             );

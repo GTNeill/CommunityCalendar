@@ -111,7 +111,7 @@
     ]
   },
   {
-    "key": "ainslieArts",
+    "key": "ainsliearts",
     "label": "Ainslie Arts Plaza",
     "icon": "🎪",
     "color": "#c026d3",
@@ -126,7 +126,7 @@
     ]
   },
   {
-    "key": "publicSafety",
+    "key": "publicsafety",
     "label": "Public Safety",
     "icon": "🚔",
     "color": "#1a6fbf",
@@ -315,7 +315,9 @@
       "rockwell.*garden",
       "greater rockwell",
       "garden.*walk",
-      "parks"
+      "parks",
+      "GRO",
+      "Greater Rockwell Organization"
     ]
   },
   {
@@ -347,7 +349,7 @@
     ]
   },
   {
-    "key": "sports___exercise",
+    "key": "sports_exercise",
     "label": "Sports & Exercise",
     "icon": "🏃",
     "color": "#888888",

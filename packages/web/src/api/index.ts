@@ -20,6 +20,7 @@ const CAL2_ID = "c_05dba706bb25f28f63bfc0b821c9f8d5e29d9f2b105e78949388b675eb801
 // here are logged and skipped rather than failing /api/events.
 const SQUARESPACE_SOURCES: SquarespaceSource[] = [
   { url: "https://www.thegreaterrockwell.org/events", name: "Greater Rockwell Organization" },
+  { url: "https://www.heartoflincolnsquare.org/events", name: "Heart of Lincoln Square" },
 ];
 
 // ── Category persistence ──────────────────────────────────────────────────────

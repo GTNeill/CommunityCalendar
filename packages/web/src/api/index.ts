@@ -5,10 +5,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { auth, ADMIN_EMAIL_ALLOWLIST } from "./auth";
 import { requireAdminAuth } from "./middleware/auth";
+import { fetchSquarespaceEvents, type SquarespaceSource } from "./connectors/squarespace";
+import { DEFAULT_TZ, toChicagoISO } from "./lib/time";
 
 // ── 40th Ward public Google Calendar IDs ─────────────────────────────────────
 const CAL1_ID = "c_50dc8883383193a9f6ba4d86cd23a836978e1d42028f0e7bb263955d5539912c@group.calendar.google.com";
 const CAL2_ID = "c_05dba706bb25f28f63bfc0b821c9f8d5e29d9f2b105e78949388b675eb801572@group.calendar.google.com";
+
+// ── Squarespace event collections ────────────────────────────────────────────
+// Neighborhood orgs on Squarespace publish no usable .ics feed, but their
+// events page exposes structured JSON at ?format=json. See
+// connectors/squarespace.ts. These sources are supplemental: if one is down or
+// changes shape, the ward's own Google feeds must still render, so failures
+// here are logged and skipped rather than failing /api/events.
+const SQUARESPACE_SOURCES: SquarespaceSource[] = [
+  { url: "https://www.thegreaterrockwell.org/events", name: "Greater Rockwell Organization" },
+];
 
 // ── Category persistence ──────────────────────────────────────────────────────
 // DATA_DIR env var → set to a Railway volume mount path for persistence across deploys.
@@ -231,8 +243,6 @@ function naiveISOWithZ(raw: string): string {
   return iso;
 }
 
-const DEFAULT_TZ = "America/Chicago";
-
 function parseICSDate(raw: string, tzid?: string): { date: Date; allDay: boolean } {
   if (!raw) return { date: new Date(0), allDay: false };
   const isAllDay = /VALUE=DATE/.test(raw) || /^\d{8}$/.test(raw.replace(/.*:/, ""));
@@ -251,10 +261,6 @@ function parseICSDate(raw: string, tzid?: string): { date: Date; allDay: boolean
   // event's own TZID, falling back to Central time since that's this
   // calendar's home timezone.
   return { date: zonedWallClockToUTC(iso, tzid || DEFAULT_TZ), allDay: false };
-}
-
-function toChicagoISO(d: Date): string {
-  return d.toLocaleString("sv-SE", { timeZone: "America/Chicago" }).replace(" ", "T");
 }
 
 function parseICS(ics: string, calendarName: string, calendarId: string, timeMin: Date, timeMax: Date): any[] {
@@ -385,6 +391,21 @@ async function fetchICalEvents(timeMin: Date, timeMax: Date): Promise<any[]> {
     const ics = await res.text();
     allEvents.push(...parseICS(ics, name, id, timeMin, timeMax));
   }));
+
+  // Supplemental non-ICS sources. Deliberately settled, not awaited as a
+  // group: a broken third-party site must never take down the ward calendar.
+  const sqspResults = await Promise.allSettled(
+    SQUARESPACE_SOURCES.map(src => fetchSquarespaceEvents(src, timeMin, timeMax)),
+  );
+  sqspResults.forEach((r, i) => {
+    const src = SQUARESPACE_SOURCES[i];
+    if (r.status === "fulfilled") {
+      console.log(`[squarespace] ${src.name}: ${r.value.length} event(s) in window`);
+      allEvents.push(...r.value);
+    } else {
+      console.error(`[squarespace] ${src.name} failed, skipping:`, r.reason?.message ?? r.reason);
+    }
+  });
 
   const seen = new Set<string>();
   const deduped = allEvents.filter(ev => {

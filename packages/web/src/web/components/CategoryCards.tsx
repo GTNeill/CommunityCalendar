@@ -5,6 +5,7 @@ import {
 } from "../lib/calendarUtils";
 import { MapPin, Clock, ExternalLink, User, Calendar, AlarmClock, X, CalendarPlus } from "lucide-react";
 import { useTheme } from "../lib/theme";
+import { readableOn, readableOnTint, onSolid } from "../lib/a11y";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useCategories, buildCategoryGroups } from "../hooks/useCategories";
 import CategoryIcon from "./CategoryIcon";
@@ -74,9 +75,16 @@ function EventPopup({
     ? "All day"
     : `${fmtTime(ev.start, false)} – ${ev.end ? fmtTime(ev.end, false) : ""}`;
 
+  const titleId = `event-popup-title-${ev.id}`;
+
   return (
     <div
       ref={popupRef}
+      // WCAG 4.1.2 — the popup is a real dialog: it needs a role and an
+      // accessible name so assistive tech announces it when focus moves in.
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={titleId}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       style={{
@@ -99,18 +107,7 @@ function EventPopup({
       }}
     >
       {/* Colour bar — mimics GCal's left accent bar at top; on mobile doubles as a close button */}
-      {isMobile ? (
-        <div
-          onClick={onClose}
-          style={{
-            height: 6,
-            background: categoryColor,
-            cursor: "pointer",
-          }}
-        />
-      ) : (
-        <div style={{ height: 6, background: categoryColor }} />
-      )}
+      <div style={{ height: 6, background: categoryColor }} />
       {isMobile && (
         <button
           onClick={onClose}
@@ -144,13 +141,14 @@ function EventPopup({
             fontWeight: 700,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
-            color: categoryColor,
+            color: readableOn(categoryColor, theme.popupBg),
             marginBottom: 4,
           }}
         >
           <CategoryIcon icon={ev.categoryIcon} size={12} /> {ev.categoryLabel}
         </div>
         <div
+          id={titleId}
           style={{
             fontSize: "1rem",
             fontWeight: 700,
@@ -175,7 +173,7 @@ function EventPopup({
             <div style={{ fontSize: "0.875rem", fontWeight: 600, color: theme.textPrimary }}>
               {fmtWeekday(ev.start)}, {fmtMonthShort(ev.start)} {fmtDayNum(ev.start)}
             </div>
-            <div style={{ fontSize: "0.8rem", color: theme.textPrimary, opacity: 0.7, marginTop: 1 }}>
+            <div style={{ fontSize: "0.8rem", color: theme.textMuted, marginTop: 1 }}>
               {timeStr}
               {dur && (
                 <span
@@ -184,7 +182,7 @@ function EventPopup({
                     padding: "1px 7px",
                     borderRadius: 99,
                     background: `${categoryColor}22`,
-                    color: categoryColor,
+                    color: readableOnTint(categoryColor, "22", theme.popupBg),
                     fontSize: "0.72rem",
                     fontWeight: 700,
                   }}
@@ -251,7 +249,7 @@ function EventPopup({
             style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}
           >
             <ExternalLink size={13} style={{ color: categoryColor }} />
-            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: categoryColor }}>
+            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: readableOn(categoryColor, theme.popupBg) }}>
               Open in Google Calendar
             </span>
           </a>
@@ -263,7 +261,7 @@ function EventPopup({
           style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}
         >
           <CalendarPlus size={13} style={{ color: categoryColor }} />
-          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: categoryColor }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: readableOn(categoryColor, theme.popupBg) }}>
             Add to my calendar
           </span>
         </a>
@@ -311,6 +309,20 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
   // On mobile, tapping the row shows the detail popup instead of navigating
   // straight to Google Calendar (which would otherwise open off-screen/
   // unexpectedly and skip the preview entirely). Tapping outside closes it.
+  // WCAG 2.1.2 — Escape must dismiss the popup wherever focus happens to be
+  // (it can be opened by hover, so focus may still be elsewhere on the page).
+  useEffect(() => {
+    if (!hovered) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setHovered(false);
+        rowRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [hovered]);
+
   useEffect(() => {
     if (!isMobile || !hovered) return;
     const handleOutside = (e: MouseEvent) => {
@@ -322,19 +334,42 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
     return () => document.removeEventListener("click", handleOutside, true);
   }, [isMobile, hovered]);
 
-  const handleRowClick = (e: React.MouseEvent) => {
+  const activate = useCallback(() => {
     if (isMobile) {
-      e.preventDefault();
       setHovered(v => !v);
       return;
     }
     if (ev.htmlLink) window.open(ev.htmlLink, "_blank", "noopener,noreferrer");
+  }, [isMobile, ev.htmlLink]);
+
+  const handleRowClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    activate();
+  };
+
+  // WCAG 2.1.1 — the row is the single interactive element for the event, so
+  // it must be reachable and operable from the keyboard. Enter/Space activate
+  // it; Escape dismisses the detail popup without moving focus.
+  const handleRowKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      activate();
+      return;
+    }
+    if (e.key === "Escape" && hovered) {
+      e.stopPropagation();
+      setHovered(false);
+    }
   };
 
   return (
     <>
       <div
         ref={rowRef}
+        role="button"
+        tabIndex={0}
+        aria-expanded={hovered}
+        aria-label={`${ev.title}, ${fmtWeekday(ev.start)} ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}, ${fmtTime(ev.start, ev.isAllDay)}`}
         className="flex gap-4"
         style={{
           padding: "10px 14px",
@@ -353,6 +388,7 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
         onClick={handleRowClick}
+        onKeyDown={handleRowKeyDown}
       >
         {/* Date column */}
         <div
@@ -366,13 +402,15 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
             transition: "background 0.18s",
           }}
         >
-          <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, color: categoryColor }}>
+          <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, color: readableOnTint(categoryColor, "14", theme.surface) }}>
             {fmtWeekday(ev.start)}
           </div>
           <div style={{ fontSize: "1.4rem", fontWeight: 800, lineHeight: 1.1, color: theme.textPrimary }}>
             {fmtDayNum(ev.start)}
           </div>
-          <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: categoryColor, opacity: 0.8 }}>
+          {/* opacity removed: it stacked on an already-tinted colour and pushed
+              this 10px label under 3:1 (WCAG 1.4.3). */}
+          <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: readableOnTint(categoryColor, "14", theme.surface) }}>
             {fmtMonthShort(ev.start)}
           </div>
         </div>
@@ -381,21 +419,22 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
         <div className="min-w-0 flex-1" style={{ paddingTop: 3 }}>
           {/* Title row */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <a
-              href={ev.htmlLink ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
+            {/* The row itself is the interactive control (role="button"), so the
+                title is plain text — nesting a link inside a button is invalid
+                and produces two tab stops for one action (WCAG 4.1.2). The real
+                "Open in Google Calendar" anchor lives in the detail popup. */}
+            <h3
               style={{
                 fontSize: "0.9rem",
                 fontWeight: 700,
-                color: hovered ? categoryColor : theme.textPrimary,
-                textDecoration: "none",
+                margin: 0,
+                color: hovered ? readableOnTint(categoryColor, "18", theme.surface) : theme.textPrimary,
                 transition: "color 0.15s",
                 lineHeight: 1.3,
               }}
             >
               {ev.title}
-            </a>
+            </h3>
             {today && (
               <span
                 style={{
@@ -406,7 +445,7 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
                   textTransform: "uppercase",
                   letterSpacing: "0.07em",
                   background: categoryColor,
-                  color: "#0A0A0A",
+                  color: onSolid(categoryColor),
                 }}
               >
                 Today
@@ -431,7 +470,7 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
                   padding: "1px 7px",
                   borderRadius: 99,
                   background: `${categoryColor}22`,
-                  color: categoryColor,
+                  color: readableOnTint(categoryColor, "22", theme.surface),
                 }}
               >
                 {dur}
@@ -512,7 +551,7 @@ function CategoryFilterBar({
           cursor: "pointer",
           border: `1.5px solid ${allSelected ? theme.teal : theme.border}`,
           background: allSelected ? `${theme.teal}22` : "transparent",
-          color: allSelected ? theme.teal : theme.textMuted,
+          color: allSelected ? readableOnTint(theme.teal, "22", theme.bg) : theme.textMuted,
           transition: "all 0.15s", outline: "none",
         }}
       >
@@ -530,7 +569,7 @@ function CategoryFilterBar({
               cursor: "pointer",
               border: `1.5px solid ${active ? color : theme.border}`,
               background: active ? `${color}22` : "transparent",
-              color: active ? color : theme.textMuted,
+              color: active ? readableOnTint(color, "22", theme.bg) : theme.textMuted,
               transition: "all 0.15s", outline: "none",
             }}
           >
@@ -562,9 +601,11 @@ const MAX_VISIBLE = 4;
  */
 function CardEventList({
   color,
+  label,
   children,
 }: {
   color: string;
+  label: string;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -622,6 +663,11 @@ function CardEventList({
   return (
     <div
       ref={ref}
+      // WCAG 2.1.1 — beyond MAX_VISIBLE rows this region scrolls, so it needs
+      // to be focusable or its 5th+ events are unreachable without a mouse.
+      tabIndex={maxHeight === null ? undefined : 0}
+      role={maxHeight === null ? undefined : "group"}
+      aria-label={maxHeight === null ? undefined : `${label} events, scrollable list`}
       style={{
         overflowY: maxHeight === null ? "visible" : "auto",
         maxHeight: maxHeight === null ? "none" : maxHeight,
@@ -767,18 +813,23 @@ export default function CategoryCards({ grouped }: Props) {
                   }}
                 >
                   <CategoryIcon icon={meta.icon} size={20} />
-                  <span
+                  {/* h2 under the group's h2? No — groups use a plain label, so
+                      category names are the page's second-level headings (1.3.1). */}
+                  <h2
                     style={{
                       fontFamily: theme.fontBody,
                       fontSize: "0.8rem",
                       fontWeight: 800,
+                      margin: 0,
                       textTransform: "uppercase",
                       letterSpacing: "0.1em",
-                      color: meta.color,
+                      // Category colours are admin-editable data, so they are
+                      // corrected against the card header tint at render time.
+                      color: readableOnTint(meta.color, "1e", theme.surface),
                     }}
                   >
                     {meta.label}
-                  </span>
+                  </h2>
                   <div
                     style={{
                       marginLeft: "auto",
@@ -786,7 +837,7 @@ export default function CategoryCards({ grouped }: Props) {
                       height: 24,
                       borderRadius: "50%",
                       background: meta.color,
-                      color: "#fff",
+                      color: onSolid(meta.color),
                       fontSize: "0.7rem",
                       fontWeight: 800,
                       display: "flex",
@@ -813,7 +864,7 @@ export default function CategoryCards({ grouped }: Props) {
                     No events in this range
                   </div>
                 ) : (
-                  <CardEventList color={meta.color}>
+                  <CardEventList color={meta.color} label={meta.label}>
                     {/* Future events (today onward) */}
                     {futureEvents.map(ev => (
                       <EventRow key={ev.id} ev={ev} categoryColor={meta.color} />
@@ -839,7 +890,6 @@ export default function CategoryCards({ grouped }: Props) {
                               textTransform: "uppercase",
                               letterSpacing: "0.1em",
                               color: theme.textMuted,
-                              opacity: 0.6,
                             }}
                           >
                             Earlier this period
@@ -847,7 +897,9 @@ export default function CategoryCards({ grouped }: Props) {
                           <div style={{ flex: 1, height: 1, background: theme.border }} />
                         </div>
                         {pastEvents.map(ev => (
-                          <div key={ev.id} style={{ opacity: 0.45 }}>
+                          // 0.45 dropped past events to ~2:1; 0.85 keeps the
+                          // visual de-emphasis while staying above 4.5:1.
+                          <div key={ev.id} style={{ opacity: 0.85 }}>
                             <EventRow ev={ev} categoryColor={meta.color} />
                           </div>
                         ))}

@@ -36,6 +36,8 @@ function ZoomSlider({
 }) {
   return (
     <div
+      role="group"
+      aria-label="Content zoom"
       title={`Content zoom: ${zoom}%`}
       style={{
         position: "fixed",
@@ -107,20 +109,25 @@ function ZoomSlider({
         <ZoomOut size={15} />
       </button>
 
-      <div
+      <button
+        type="button"
         onClick={() => onChange(ZOOM_DEFAULT)}
         title="Reset zoom to 100%"
+        aria-label={`Reset zoom to 100 percent. Current zoom ${zoom} percent`}
         style={{
           fontSize: "0.62rem",
           fontWeight: 700,
           color: theme.textMuted,
+          background: "transparent",
+          border: "none",
+          padding: 0,
           cursor: "pointer",
           userSelect: "none",
           letterSpacing: "0.02em",
         }}
       >
         {zoom}%
-      </div>
+      </button>
     </div>
   );
 }
@@ -207,7 +214,25 @@ export default function Index() {
   );
 
   return (
-    <div className="min-h-screen" style={{ background: theme.bg, fontFamily: theme.fontBody }}>
+    <div
+      className="min-h-screen"
+      style={{
+        background: theme.bg,
+        fontFamily: theme.fontBody,
+        // Drives the global :focus-visible ring in styles.css so the
+        // indicator stays high-contrast in both themes (WCAG 2.4.7).
+        ["--a11y-focus" as any]: theme.focusRing,
+      }}
+    >
+      {/* WCAG 2.4.1 Bypass Blocks — lets keyboard users jump the toolbar,
+          which is ~10 controls deep before the first event. */}
+      <a
+        href="#main-content"
+        className="skip-link"
+        style={{ background: theme.teal, color: "#ffffff" }}
+      >
+        Skip to events
+      </a>
 
       {/* ── Top accent bar ── */}
       {!isEmbed && <div style={{ height: 4, background: theme.teal }} />}
@@ -261,7 +286,9 @@ export default function Index() {
               {rangeLabel}
             </p>
             {dataUpdatedAt > 0 && (
-              <span className="text-xs" style={{ color: theme.textMuted, opacity: 0.6 }}>
+              // role="status" announces background refreshes to screen readers (WCAG 4.1.3).
+              // The opacity that used to sit here dropped this text to 2.01:1 — removed for 1.4.3.
+              <span className="text-xs" role="status" aria-live="polite" style={{ color: theme.textMuted }}>
                 Updated {timeSince(new Date(dataUpdatedAt).toISOString())}
               </span>
             )}
@@ -279,6 +306,7 @@ export default function Index() {
                 <button
                   key={u}
                   onClick={() => { setUnit(u); setOffset(0); }}
+                  aria-pressed={unit === u}
                   title={u === "week" ? "Show one week at a time" : "Show one month at a time"}
                   style={{
                     fontFamily: theme.fontBody,
@@ -293,7 +321,6 @@ export default function Index() {
                     transition: "background 0.15s, color 0.15s",
                     cursor: "pointer",
                     border: "none",
-                    outline: "none",
                   }}
                 >
                   {u.charAt(0).toUpperCase() + u.slice(1)}
@@ -355,6 +382,7 @@ export default function Index() {
                 <button
                   key={id}
                   onClick={() => setTab(id)}
+                  aria-pressed={tab === id}
                   title={title}
                   className="flex items-center"
                   style={{
@@ -371,7 +399,6 @@ export default function Index() {
                     transition: "background 0.15s, color 0.15s",
                     cursor: "pointer",
                     border: "none",
-                    outline: "none",
                   }}
                 >
                   {icon}
@@ -442,7 +469,7 @@ export default function Index() {
       {!isMobile && <ZoomSlider zoom={zoom} onChange={setZoom} top={headerHeight} theme={theme} />}
 
       {/* ── Main ── */}
-      <main style={{ maxWidth: 1152, margin: "0 auto", padding: isMobile ? "20px 16px" : "40px 48px", zoom: `${isMobile ? 100 : zoom}%` as any }}>
+      <main id="main-content" tabIndex={-1} style={{ maxWidth: 1152, margin: "0 auto", padding: isMobile ? "20px 16px" : "40px 48px", zoom: `${isMobile ? 100 : zoom}%` as any }}>
 
         {/* Error */}
         {isError && (
@@ -496,6 +523,7 @@ export default function Index() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search events in this view…"
+              aria-label="Search events in this view"
               style={{
                 flex: 1,
                 border: "none",

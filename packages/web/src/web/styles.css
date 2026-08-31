@@ -79,3 +79,68 @@ html, body, #root {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Accessibility ───────────────────────────────────────────────────────── */
+
+/* WCAG 2.4.7 Focus Visible. Several controls set `outline: none` inline to
+   kill the default ring; this restores a consistent, high-contrast indicator
+   for keyboard users only (:focus-visible, so mouse clicks stay clean).
+   The ring colour comes from --a11y-focus, set per-theme at the app root. */
+:focus-visible {
+  outline: 3px solid var(--a11y-focus, #0f5d59);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Inline `outline: none` on an element beats a stylesheet rule of equal
+   specificity, so re-assert the ring with !important for focus-visible only. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--a11y-focus, #0f5d59) !important;
+  outline-offset: 2px;
+}
+
+/* Screen-reader-only, but revealed on focus — used by the skip link. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 10px 18px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  border-radius: 0 0 8px 0;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+/* WCAG 1.4.10 Reflow — no horizontal scrolling at 320px. */
+html, body {
+  overflow-x: hidden;
+}
+
+@media (max-width: 480px) {
+  /* Long unbroken strings (event titles, URLs, addresses) are the usual
+     cause of overflow on narrow phones. */
+  body {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+}
+
+/* WCAG 2.3.3 / respect reduced-motion for the shimmer + fade animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -6,6 +6,7 @@ import {
 } from "../lib/calendarUtils";
 import { Clock, MapPin, User, Calendar, AlarmClock, ExternalLink, X, CalendarPlus } from "lucide-react";
 import { useTheme } from "../lib/theme";
+import { readableOn, readableOnTint, onSolid } from "../lib/a11y";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useCategories } from "../hooks/useCategories";
 import CategoryIcon from "./CategoryIcon";
@@ -42,6 +43,7 @@ function EventPopup({
   const popupRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const cat = ev.categoryColor;
+  const titleId = `grid-popup-title-${ev.id}`;
 
   useEffect(() => {
     if (!anchorRef.current || !popupRef.current) return;
@@ -96,7 +98,7 @@ function EventPopup({
         overflow: "hidden",
       }}
     >
-      <div style={{ height: 5, background: cat, cursor: isMobile ? "pointer" : "default" }} onClick={isMobile ? onClose : undefined} />
+      <div style={{ height: 5, background: cat }} />
       {isMobile && (
         <button
           onClick={onClose}
@@ -122,10 +124,10 @@ function EventPopup({
         </button>
       )}
       <div style={{ padding: "12px 14px 8px" }}>
-        <div style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: cat, marginBottom: 3 }}>
+        <div style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: readableOn(cat, theme.popupBg), marginBottom: 3 }}>
           <CategoryIcon icon={ev.categoryIcon} size={12} /> {ev.categoryLabel}
         </div>
-        <div style={{ fontSize: "0.95rem", fontWeight: 700, lineHeight: 1.3, color: theme.textPrimary }}>
+        <div id={titleId} style={{ fontSize: "0.95rem", fontWeight: 700, lineHeight: 1.3, color: theme.textPrimary }}>
           {ev.title}
         </div>
       </div>
@@ -137,10 +139,10 @@ function EventPopup({
             <div style={{ fontSize: "0.82rem", fontWeight: 600, color: theme.textPrimary }}>
               {fmtWeekday(ev.start)}, {fmtMonthShort(ev.start)} {fmtDayNum(ev.start)}
             </div>
-            <div style={{ fontSize: "0.76rem", color: theme.textPrimary, opacity: 0.65, marginTop: 1 }}>
+            <div style={{ fontSize: "0.76rem", color: theme.textMuted, marginTop: 1 }}>
               {timeStr}
               {dur && (
-                <span style={{ marginLeft: 7, padding: "1px 6px", borderRadius: 99, background: `${cat}22`, color: cat, fontSize: "0.68rem", fontWeight: 700 }}>
+                <span style={{ marginLeft: 7, padding: "1px 6px", borderRadius: 99, background: `${cat}22`, color: readableOnTint(cat, "22", theme.popupBg), fontSize: "0.68rem", fontWeight: 700 }}>
                   {dur}
                 </span>
               )}
@@ -231,6 +233,19 @@ function EventChip({ ev }: { ev: CalEvent }) {
 
   // Tapping a chip on mobile shows the detail popup instead of navigating
   // straight to Google Calendar; tapping outside closes it.
+  // WCAG 2.1.2 — Escape dismisses the popup regardless of where focus is.
+  useEffect(() => {
+    if (!hovered) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setHovered(false);
+        ref.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [hovered]);
+
   useEffect(() => {
     if (!isMobile || !hovered) return;
     const handleOutside = (e: MouseEvent) => {
@@ -246,8 +261,22 @@ function EventChip({ ev }: { ev: CalEvent }) {
     <>
       <div
         ref={ref}
+        role="button"
+        tabIndex={0}
+        aria-expanded={hovered}
+        aria-label={`${ev.title}, ${fmtWeekday(ev.start)} ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}, ${fmtTime(ev.start, ev.isAllDay)}`}
         onMouseEnter={enter}
         onMouseLeave={leave}
+        onKeyDown={e => {
+          // WCAG 2.1.1 — chips are the only way into an event from the grid.
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (isMobile) { setHovered(v => !v); return; }
+            if (ev.htmlLink) window.open(ev.htmlLink, "_blank", "noopener,noreferrer");
+            return;
+          }
+          if (e.key === "Escape" && hovered) { e.stopPropagation(); setHovered(false); }
+        }}
         style={{
           display: "flex",
           alignItems: "flex-start",       // top-align icon with wrapped text
@@ -270,7 +299,7 @@ function EventChip({ ev }: { ev: CalEvent }) {
         }}
       >
         {/* dot / diamond — flex-shrink so it stays tiny */}
-        <span style={{ fontSize: "0.55rem", color: cat, fontWeight: 800, flexShrink: 0, marginTop: "0.2em" }}>
+        <span style={{ fontSize: "0.55rem", color: readableOnTint(cat, "1a", theme.bg), fontWeight: 800, flexShrink: 0, marginTop: "0.2em" }}>
           {ev.isAllDay ? "●" : "◆"}
         </span>
         {/* Title wraps freely; no truncation */}
@@ -278,7 +307,7 @@ function EventChip({ ev }: { ev: CalEvent }) {
           style={{
             fontSize: "0.7rem",
             fontWeight: 600,
-            color: hovered ? cat : theme.textPrimary,
+            color: hovered ? readableOnTint(cat, "1a", theme.bg) : theme.textPrimary,
             transition: "color 0.15s",
             lineHeight: 1.4,
             wordBreak: "break-word",
@@ -286,7 +315,7 @@ function EventChip({ ev }: { ev: CalEvent }) {
           }}
         >
           {!ev.isAllDay && (
-            <span style={{ color: cat, marginRight: 4, fontSize: "0.65rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+            <span style={{ color: readableOnTint(cat, "1a", theme.bg), marginRight: 4, fontSize: "0.65rem", fontWeight: 700, whiteSpace: "nowrap" }}>
               {fmtTime(ev.start, false).replace(":00", "").toLowerCase()}
             </span>
           )}
@@ -354,7 +383,7 @@ function DayCell({
             flexShrink: 0,
             background: isToday ? theme.accent : "transparent",
             color: isToday
-              ? "#0A0A0A"
+              ? onSolid(theme.accent)
               : !inMonth
               ? theme.textFaint
               : isWeekend
@@ -476,7 +505,6 @@ function MonthView({ events, start }: { events: CalEvent[]; start: Date }) {
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               color: i === 0 || i === 6 ? theme.textMuted : theme.textPrimary,
-              opacity: 0.75,
               borderRight: i < 6 ? `1px solid ${theme.border}` : undefined,
             }}
           >

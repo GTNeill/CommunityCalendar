@@ -2,6 +2,7 @@ import type { CalEvent } from "../lib/calendarUtils";
 import { fmtDayNum, fmtMonthShort, fmtWeekday, fmtTime, fmtDuration, linkifyDescription, googleMapsUrl, googleCalendarAddUrl } from "../lib/calendarUtils";
 import { MapPin, Clock, ExternalLink, User, Calendar, AlarmClock, CalendarPlus } from "lucide-react";
 import { useTheme } from "../lib/theme";
+import { readableOn, readableOnTint } from "../lib/a11y";
 import CategoryIcon from "./CategoryIcon";
 /**
  * Static, wide version of the Google Calendar–style event popup.
@@ -38,12 +39,6 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
           ? "0 2px 14px rgba(0,0,0,0.45)"
           : "0 2px 14px rgba(0,0,0,0.10)",
         overflow: "hidden",
-        cursor: ev.htmlLink ? "pointer" : "default",
-      }}
-      onClick={(e) => {
-        // Don't hijack clicks on nested links (location, description links)
-        if ((e.target as HTMLElement).closest("a")) return;
-        if (ev.htmlLink) window.open(ev.htmlLink, "_blank", "noopener,noreferrer");
       }}
     >
       {/* Colour bar */}
@@ -62,13 +57,13 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
             border: `1px solid ${categoryColor}44`,
           }}
         >
-          <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, color: categoryColor }}>
+          <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, color: readableOnTint(categoryColor, "14", theme.popupBg) }}>
             {fmtWeekday(ev.start)}
           </div>
           <div style={{ fontSize: "1.4rem", fontWeight: 800, lineHeight: 1.1, color: theme.textPrimary }}>
             {fmtDayNum(ev.start)}
           </div>
-          <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: categoryColor, opacity: 0.8 }}>
+          <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: readableOnTint(categoryColor, "14", theme.popupBg) }}>
             {fmtMonthShort(ev.start)}
           </div>
         </div>
@@ -80,23 +75,24 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "0.08em",
-              color: categoryColor,
+              color: readableOn(categoryColor, theme.popupBg),
               marginBottom: 4,
             }}
           >
             <CategoryIcon icon={ev.categoryIcon} size={12} /> {ev.categoryLabel}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <div
+            <h3
               style={{
                 fontSize: "1.1rem",
                 fontWeight: 700,
+                margin: 0,
                 lineHeight: 1.3,
                 color: theme.textPrimary,
               }}
             >
               {ev.title}
-            </div>
+            </h3>
             {ev.htmlLink && (
               <ExternalLink size={14} style={{ color: theme.textMuted, flexShrink: 0 }} />
             )}
@@ -117,7 +113,7 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
             <div style={{ fontSize: "0.9rem", fontWeight: 600, color: theme.textPrimary }}>
               {fmtWeekday(ev.start)}, {fmtMonthShort(ev.start)} {fmtDayNum(ev.start)}
             </div>
-            <div style={{ fontSize: "0.82rem", color: theme.textPrimary, opacity: 0.7, marginTop: 1 }}>
+            <div style={{ fontSize: "0.82rem", color: theme.textMuted, marginTop: 1 }}>
               {timeStr}
               {dur && (
                 <span
@@ -126,7 +122,7 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
                     padding: "1px 7px",
                     borderRadius: 99,
                     background: `${categoryColor}22`,
-                    color: categoryColor,
+                    color: readableOnTint(categoryColor, "22", theme.popupBg),
                     fontSize: "0.72rem",
                     fontWeight: 700,
                   }}
@@ -204,7 +200,7 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
             style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}
           >
             <ExternalLink size={14} style={{ color: categoryColor }} />
-            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: categoryColor }}>
+            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: readableOn(categoryColor, theme.popupBg) }}>
               Open in Google Calendar
             </span>
           </a>
@@ -216,7 +212,7 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
           style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}
         >
           <CalendarPlus size={14} style={{ color: categoryColor }} />
-          <span style={{ fontSize: "0.82rem", fontWeight: 600, color: categoryColor }}>
+          <span style={{ fontSize: "0.82rem", fontWeight: 600, color: readableOn(categoryColor, theme.popupBg) }}>
             Add to my calendar
           </span>
         </a>

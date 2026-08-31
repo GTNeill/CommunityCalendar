@@ -24,18 +24,22 @@ export default function SearchResults({ query, events }: Props) {
 
   return (
     <div>
-      <div
+      {/* h2 + live region: the result count changes as the query is typed,
+          so it must be announced (WCAG 4.1.3) and sit in the heading outline
+          (WCAG 1.3.1) above the h3 event titles in each result card. */}
+      <h2
+        aria-live="polite"
         style={{
           fontSize: "0.78rem",
           fontWeight: 600,
+          margin: "0 0 16px",
           color: theme.textMuted,
-          marginBottom: 16,
         }}
       >
         {matches.length === 0
           ? `No events match "${query}" in the current view.`
           : `${matches.length} event${matches.length === 1 ? "" : "s"} match${matches.length === 1 ? "es" : ""} "${query}" in the current view`}
-      </div>
+      </h2>
 
       {matches.length === 0 ? (
         <div

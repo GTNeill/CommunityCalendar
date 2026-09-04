@@ -7,6 +7,7 @@ import { auth, ADMIN_EMAIL_ALLOWLIST } from "./auth";
 import { requireAdminAuth } from "./middleware/auth";
 import { fetchSquarespaceEvents, type SquarespaceSource } from "./connectors/squarespace";
 import { DEFAULT_TZ, toChicagoISO } from "./lib/time";
+import { dedupeEvents, type DedupeCluster } from "./lib/dedupe";
 
 // ── 40th Ward public Google Calendar IDs ─────────────────────────────────────
 const CAL1_ID = "c_50dc8883383193a9f6ba4d86cd23a836978e1d42028f0e7bb263955d5539912c@group.calendar.google.com";
@@ -377,20 +378,30 @@ function parseICS(ics: string, calendarName: string, calendarId: string, timeMin
   return events;
 }
 
-async function fetchICalEvents(timeMin: Date, timeMax: Date): Promise<any[]> {
+async function fetchICalEvents(
+  timeMin: Date,
+  timeMax: Date,
+  enabled = true,
+): Promise<{ events: any[]; clusters: DedupeCluster[] }> {
   const calIds = [
     { id: CAL1_ID, name: "40th Ward Events" },
     { id: CAL2_ID, name: "40th Ward Community" },
   ];
 
+  // _rank decides which record survives a merge: lower wins. The ward's own
+  // calendars are the most authoritative for ward events, and supplemental
+  // scraped sources rank behind them. See lib/dedupe.ts.
   const allEvents: any[] = [];
-  await Promise.all(calIds.map(async ({ id, name }) => {
+  await Promise.all(calIds.map(async ({ id, name }, rank) => {
     const encoded = encodeURIComponent(id);
     const url = `https://calendar.google.com/calendar/ical/${encoded}/public/basic.ics`;
     const res = await fetch(url, { headers: { "User-Agent": "40thWardCalendar/1.0" } });
     if (!res.ok) throw new Error(`iCal fetch failed for ${name}: ${res.status}`);
     const ics = await res.text();
-    allEvents.push(...parseICS(ics, name, id, timeMin, timeMax));
+    for (const ev of parseICS(ics, name, id, timeMin, timeMax)) {
+      ev._rank = rank;
+      allEvents.push(ev);
+    }
   }));
 
   // Supplemental non-ICS sources. Deliberately settled, not awaited as a
@@ -402,18 +413,27 @@ async function fetchICalEvents(timeMin: Date, timeMax: Date): Promise<any[]> {
     const src = SQUARESPACE_SOURCES[i];
     if (r.status === "fulfilled") {
       console.log(`[squarespace] ${src.name}: ${r.value.length} event(s) in window`);
-      allEvents.push(...r.value);
+      for (const ev of r.value) {
+        ev._rank = 10 + i;
+        allEvents.push(ev);
+      }
     } else {
       console.error(`[squarespace] ${src.name} failed, skipping:`, r.reason?.message ?? r.reason);
     }
   });
 
-  const seen = new Set<string>();
-  const deduped = allEvents.filter(ev => {
-    if (seen.has(ev.id)) return false;
-    seen.add(ev.id);
-    return true;
-  });
+  // Overlapping service areas mean the same real-world event is often
+  // published by several of these orgs, each with its own UID. See
+  // lib/dedupe.ts for why this is exact-title + time/place gated rather than
+  // a similarity score.
+  const { events: deduped, clusters } = enabled
+    ? dedupeEvents(allEvents)
+    : { events: allEvents, clusters: [] as DedupeCluster[] };
+
+  if (clusters.length > 0) {
+    const dropped = clusters.reduce((n, c) => n + c.dropped.length, 0);
+    console.log(`[dedupe] merged ${dropped} duplicate(s) into ${clusters.length} event(s); ${allEvents.length} → ${deduped.length}`);
+  }
 
   deduped.sort((a, b) => {
     const as = a.start?.dateTime ?? a.start?.date ?? "";
@@ -421,7 +441,7 @@ async function fetchICalEvents(timeMin: Date, timeMax: Date): Promise<any[]> {
     return new Date(as).getTime() - new Date(bs).getTime();
   });
 
-  return deduped;
+  return { events: deduped, clusters };
 }
 
 // ── Shape raw event ───────────────────────────────────────────────────────────
@@ -449,6 +469,10 @@ function shapeEvent(ev: any) {
     categoryIcon: cat.icon,
     categoryColor: cat.color,
     categoryGroup: cat.group,
+    // Every organization that published this event, most authoritative first.
+    // Present only when it was merged from more than one source.
+    sources: (ev.sources as string[] | undefined) ?? undefined,
+    duplicateCount: (ev.duplicateCount as number | undefined) ?? undefined,
   };
 }
 
@@ -679,9 +703,18 @@ const app = new Hono()
         timeMax.setDate(timeMax.getDate() + 31);
       }
 
+      // Escape hatches for verifying the de-duplication against live data:
+      //   ?dedupe=off   return every record, nothing merged
+      //   ?debug=dupes  include the merge report in the response
+      const dedupeOn = c.req.query("dedupe") !== "off";
+      const wantReport = c.req.query("debug") === "dupes";
+
       let raw: any[] = [];
+      let clusters: DedupeCluster[] = [];
       try {
-        raw = await fetchICalEvents(timeMin, timeMax);
+        const result = await fetchICalEvents(timeMin, timeMax, dedupeOn);
+        raw = result.events;
+        clusters = result.clusters;
       } catch (e: any) {
         console.error("iCal fetch failed:", e.message);
         return c.json({ error: e.message }, 500);
@@ -694,7 +727,15 @@ const app = new Hono()
         grouped[ev.category].push(ev);
       }
 
-      return c.json({ events, grouped, fetchedAt: new Date().toISOString() }, 200);
+      const body: Record<string, unknown> = {
+        events,
+        grouped,
+        fetchedAt: new Date().toISOString(),
+        duplicatesMerged: clusters.reduce((n, cl) => n + cl.dropped.length, 0),
+      };
+      if (wantReport) body.duplicateReport = clusters;
+
+      return c.json(body, 200);
     } catch (e: any) {
       console.error("/api/events error:", e);
       return c.json({ error: e.message ?? "Unknown error" }, 500);

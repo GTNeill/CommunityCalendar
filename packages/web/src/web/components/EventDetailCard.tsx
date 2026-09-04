@@ -22,6 +22,10 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
   const { theme } = useTheme();
   const categoryColor = ev.categoryColor;
 
+  // ev.sources lists every publisher of a merged event, primary first, so
+  // drop the primary (already shown above) and any duplicate of it.
+  const alsoListedBy = (ev.sources ?? []).filter(s => s && s !== ev.organizer);
+
   const dur = fmtDuration(ev.start, ev.end, ev.isAllDay);
   const timeStr = ev.isAllDay
     ? "All day"
@@ -176,11 +180,21 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
           </div>
         )}
 
-        {/* Organizer */}
+        {/* Organizer, plus any other org that published the same event.
+            Overlapping service areas mean one event is often listed by
+            several sources; the API merges those, and this keeps the merge
+            visible instead of silently dropping a publisher's credit. */}
         {ev.organizer && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <User size={15} style={{ color: categoryColor, flexShrink: 0 }} />
-            <div style={{ fontSize: "0.82rem", color: theme.textMuted }}>{ev.organizer}</div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <User size={15} style={{ color: categoryColor, flexShrink: 0, marginTop: 2 }} />
+            <div style={{ fontSize: "0.82rem", color: theme.textMuted }}>
+              <div>{ev.organizer}</div>
+              {alsoListedBy.length > 0 && (
+                <div style={{ fontSize: "0.76rem", opacity: 0.85, marginTop: 2 }}>
+                  Also listed by {alsoListedBy.join(", ")}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

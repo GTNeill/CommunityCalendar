@@ -13,6 +13,12 @@ export interface CalEvent {
   categoryLabel: string;
   categoryIcon: string;
   categoryColor: string;
+  /**
+   * Every organization that published this event, most authoritative first.
+   * Set only when the API merged duplicate listings from overlapping sources.
+   */
+  sources?: string[];
+  duplicateCount?: number;
 }
 
 // Category order and grouping now come from the live /api/categories data

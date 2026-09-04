@@ -1,4 +1,4 @@
-# sandbox-app-template
+# Community Calendar
 
 Monorepo: Bun workspaces + Turborepo.
 

@@ -1,4 +1,4 @@
-# 40th Ward Calendar — Design System
+# Community Calendar — Design System
 
 _Last synced with the live app: reflects the actual theme, categories, and components in production._
 

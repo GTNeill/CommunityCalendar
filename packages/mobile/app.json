@@ -10,7 +10,7 @@
       "edgeToEdgeEnabled": true
     },
     "extra": {
-      "apiUrl": "https://georgec-xv55tj0-preview-4200.runable.site/",
+      "apiUrl": "https://community-calendar.up.railway.app",
       "applicationId": "georgec-xv55tj0"
     },
     "ios": {
@@ -22,7 +22,7 @@
       "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
-    "name": "mobile",
+    "name": "Community Calendar",
     "slug": "mobile",
     "version": "1.0.0",
     "scheme": "mobile",

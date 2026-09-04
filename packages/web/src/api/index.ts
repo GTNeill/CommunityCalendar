@@ -435,7 +435,7 @@ async function fetchICalEvents(
   // behind all of them. See lib/dedupe.ts.
   const allEvents: any[] = [];
   await Promise.all(icsFeeds.map(async ({ url, name, gcalId }, rank) => {
-    const res = await fetch(url, { headers: { "User-Agent": "40thWardCalendar/1.0" } });
+    const res = await fetch(url, { headers: { "User-Agent": "CommunityCalendar/1.0 (+https://40thward.org)" } });
     if (!res.ok) throw new Error(`iCal fetch failed for ${name}: ${res.status}`);
     const ics = await res.text();
     // gcalId is empty for non-Google feeds, which makes buildGCalLink()

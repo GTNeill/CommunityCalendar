@@ -201,7 +201,7 @@ export async function fetchRssEvents(
 ): Promise<any[]> {
   const res = await fetch(source.url, {
     headers: {
-      "User-Agent": "40thWardCalendar/1.0 (+https://40thward.org)",
+      "User-Agent": "CommunityCalendar/1.0 (+https://40thward.org)",
       Accept: "application/rss+xml, application/xml, text/xml",
     },
   });

@@ -125,7 +125,7 @@ function mapItem(item: SquarespaceItem, source: SquarespaceSource): any | null {
 async function fetchPage(url: string): Promise<SquarespaceCollectionResponse> {
   const res = await fetch(url, {
     headers: {
-      "User-Agent": "40thWardCalendar/1.0 (+https://40thward.org)",
+      "User-Agent": "CommunityCalendar/1.0 (+https://40thward.org)",
       Accept: "application/json",
     },
   });

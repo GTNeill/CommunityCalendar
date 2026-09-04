@@ -141,6 +141,10 @@ export default function Index() {
   const headerSubtitle = siteSettings?.headerSubtitle ?? "Chicago Community Events Calendar";
   const footerLinkText = siteSettings?.footerLinkText ?? "";
   const footerLinkUrl = siteSettings?.footerLinkUrl ?? "";
+  // Blank hides the Submit Your Event button entirely. Undefined means the
+  // settings request is still in flight, so stay hidden until it resolves
+  // rather than flashing a button that may be turned off.
+  const submitEventUrl = (siteSettings?.submitEventUrl ?? "").trim();
   const [tab, setTab] = useState<Tab>("cards");
   const [unit, setUnit] = useState<RangeUnit>("month");
   const [offset, setOffset] = useState(0);
@@ -435,9 +439,11 @@ export default function Index() {
               {theme.mode === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            {/* ── Submit Your Event — pinned to the right margin of the control bar ── */}
+            {/* ── Submit Your Event — pinned to the right margin of the control bar.
+                URL is editable from /admincat; blank hides the button. ── */}
+            {submitEventUrl && (
             <a
-              href="https://airtable.com/appDK75qZXFYekjMt/pag5fZSZB51xIq4vi/form"
+              href={submitEventUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center rounded font-bold"
@@ -460,6 +466,7 @@ export default function Index() {
               Submit Your Event
               <ExternalLink size={14} />
             </a>
+            )}
 
           </div>{/* end row 3 controls */}
         </div>

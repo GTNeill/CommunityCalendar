@@ -518,6 +518,7 @@ interface SiteSettings {
   headerSubtitle: string;
   footerLinkText: string;
   footerLinkUrl: string;
+  submitEventUrl: string;
 }
 
 const SETTINGS_FIELD_STYLE: React.CSSProperties = {
@@ -553,6 +554,7 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
 
   const field = (key: keyof SiteSettings) => (
     <input
+      id={`setting-${key}`}
       value={settings?.[key] ?? ""}
       onChange={e => {
         setSettings(s => (s ? { ...s, [key]: e.target.value } : s));
@@ -659,6 +661,12 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
             Footer Link URL <span style={{ opacity: 0.7 }}>(leave blank to hide the link)</span>
           </label>
           {field("footerLinkUrl")}
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label htmlFor="setting-submitEventUrl" style={{ display: "block", fontSize: "11px", color: theme.textMuted, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Submit Your Event URL <span style={{ opacity: 0.7 }}>(leave blank to hide the button)</span>
+          </label>
+          {field("submitEventUrl")}
         </div>
       </div>
     </div>

@@ -42,6 +42,8 @@ export interface SiteSettings {
   headerSubtitle: string;
   footerLinkText: string;
   footerLinkUrl: string;
+  /** Target of the "Submit Your Event" button. Blank hides the button. */
+  submitEventUrl: string;
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
@@ -49,6 +51,9 @@ const DEFAULT_SETTINGS: SiteSettings = {
   headerSubtitle: "Chicago Community Events Calendar",
   footerLinkText: "40thward.org →",
   footerLinkUrl: "https://40thward.org/events/",
+  // Preserves the URL that used to be hardcoded in the header, so existing
+  // deploys keep the same button until someone changes it from /admincat.
+  submitEventUrl: "https://airtable.com/appDK75qZXFYekjMt/pag5fZSZB51xIq4vi/form",
 };
 
 let runtimeSettings: SiteSettings = DEFAULT_SETTINGS;
@@ -632,6 +637,9 @@ const app = new Hono()
         headerSubtitle: typeof body.headerSubtitle === "string" ? body.headerSubtitle : DEFAULT_SETTINGS.headerSubtitle,
         footerLinkText: typeof body.footerLinkText === "string" ? body.footerLinkText : "",
         footerLinkUrl: typeof body.footerLinkUrl === "string" ? body.footerLinkUrl : "",
+        // Empty is a meaningful value here (it hides the button), so this
+        // must not fall back to the default the way the header fields do.
+        submitEventUrl: typeof body.submitEventUrl === "string" ? body.submitEventUrl : "",
       };
       saveSettings(next);
       runtimeSettings = loadSettings();

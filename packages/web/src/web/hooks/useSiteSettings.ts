@@ -5,6 +5,7 @@ export interface SiteSettings {
   headerSubtitle: string;
   footerLinkText: string;
   footerLinkUrl: string;
+  submitEventUrl: string;
 }
 
 async function fetchSettings(): Promise<SiteSettings> {

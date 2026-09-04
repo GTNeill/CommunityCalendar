@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 export interface SiteSettings {
   headerTitle: string;
   headerSubtitle: string;
+  footerText: string;
   footerLinkText: string;
   footerLinkUrl: string;
   submitEventUrl: string;

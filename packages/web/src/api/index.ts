@@ -48,6 +48,8 @@ const FEEDS_FILE = path.join(DATA_DIR, "feeds.json");
 export interface SiteSettings {
   headerTitle: string;
   headerSubtitle: string;
+  /** Left-hand footer credit line. Blank hides it. */
+  footerText: string;
   footerLinkText: string;
   footerLinkUrl: string;
   /** Target of the "Submit Your Event" button. Blank hides the button. */
@@ -57,6 +59,9 @@ export interface SiteSettings {
 const DEFAULT_SETTINGS: SiteSettings = {
   headerTitle: "40th Ward",
   headerSubtitle: "Chicago Community Events Calendar",
+  // Preserves the credit line that used to be hardcoded in the footer, so
+  // existing deploys keep the same text until someone changes it.
+  footerText: "40th Ward of Chicago · Alderperson Andre Vasquez",
   footerLinkText: "40thward.org →",
   footerLinkUrl: "https://40thward.org/events/",
   // Preserves the URL that used to be hardcoded in the header, so existing
@@ -691,6 +696,9 @@ const app = new Hono()
       const next: SiteSettings = {
         headerTitle: typeof body.headerTitle === "string" ? body.headerTitle : DEFAULT_SETTINGS.headerTitle,
         headerSubtitle: typeof body.headerSubtitle === "string" ? body.headerSubtitle : DEFAULT_SETTINGS.headerSubtitle,
+        // Empty is meaningful for the footer fields too (it hides them), so
+        // these must not fall back to defaults the way the header fields do.
+        footerText: typeof body.footerText === "string" ? body.footerText : "",
         footerLinkText: typeof body.footerLinkText === "string" ? body.footerLinkText : "",
         footerLinkUrl: typeof body.footerLinkUrl === "string" ? body.footerLinkUrl : "",
         // Empty is a meaningful value here (it hides the button), so this

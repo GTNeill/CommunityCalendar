@@ -139,6 +139,7 @@ export default function Index() {
   const { data: siteSettings } = useSiteSettings();
   const headerTitle = siteSettings?.headerTitle ?? "40th Ward";
   const headerSubtitle = siteSettings?.headerSubtitle ?? "Chicago Community Events Calendar";
+  const footerText = siteSettings?.footerText ?? "";
   const footerLinkText = siteSettings?.footerLinkText ?? "";
   const footerLinkUrl = siteSettings?.footerLinkUrl ?? "";
   // Blank hides the Submit Your Event button entirely. Undefined means the
@@ -583,16 +584,21 @@ export default function Index() {
           }}
         >
           <div style={{ maxWidth: 1152, margin: "0 auto", padding: isMobile ? "0 16px" : "0 48px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.55)", fontFamily: theme.fontBody }}>
-              40th Ward of Chicago · Alderperson Andre Vasquez
-            </p>
+            {footerText && (
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.55)", fontFamily: theme.fontBody }}>
+                {footerText}
+              </p>
+            )}
             {footerLinkUrl && (
               <a
                 href={footerLinkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-semibold"
-                style={{ color: "#fffbf4", fontFamily: theme.fontBody, textDecoration: "none" }}
+                // marginLeft:auto keeps the link right-aligned even when the
+                // footer text is blank and it is the only child of this
+                // space-between row.
+                style={{ color: "#fffbf4", fontFamily: theme.fontBody, textDecoration: "none", marginLeft: "auto" }}
               >
                 {footerLinkText || footerLinkUrl}
               </a>

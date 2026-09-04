@@ -650,6 +650,12 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
           </label>
           {field("headerSubtitle")}
         </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label htmlFor="setting-footerText" style={{ display: "block", fontSize: "11px", color: theme.textMuted, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Footer Text <span style={{ opacity: 0.7 }}>(left side, leave blank to hide)</span>
+          </label>
+          {field("footerText")}
+        </div>
         <div>
           <label style={{ display: "block", fontSize: "11px", color: theme.textMuted, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Footer Link Text

@@ -15,6 +15,12 @@
 //
 // A bare value with no scheme is treated as a Google Calendar id and expanded
 // to its public iCal URL, exactly as the plugin does.
+//
+// Three kinds of source, in descending order of data quality:
+//   ics          — any .ics feed, or a bare Google Calendar id.
+//   squarespace  — no .ics, but ?format=json gives full structured events.
+//   rss          — Wild Apricot and similar, which publish no export at all.
+//                  Start time only: the feed carries no end or location.
 
 /** Google's public iCal URL template, used when a feed is given as a calendar id. */
 const GCAL_ICAL = "https://calendar.google.com/calendar/ical/%s/public/basic.ics";
@@ -40,10 +46,16 @@ export interface SquarespaceFeed {
   name: string;
 }
 
+export interface RssFeed {
+  url: string;
+  name: string;
+}
+
 export interface FeedSettings {
   /** Raw textarea contents, preserved verbatim so comments and order survive a round-trip. */
   ics: string;
   squarespace: string;
+  rss: string;
 }
 
 /** The sources that were hardcoded before this was configurable. */
@@ -54,6 +66,8 @@ export const DEFAULT_FEEDS: FeedSettings = {
   squarespace:
     "https://www.thegreaterrockwell.org/events | Greater Rockwell Organization\n" +
     "https://www.heartoflincolnsquare.org/events | Heart of Lincoln Square",
+  rss:
+    "https://www.dankhaus.com/events/rss | DANK Haus German American Cultural Center",
 };
 
 /** Split a textarea into `{ value, name }`, dropping blanks and # comments. */
@@ -132,6 +146,20 @@ export function parseSquarespaceFeeds(raw: string): SquarespaceFeed[] {
 }
 
 /**
+ * Parse the RSS textarea. Like Squarespace these must be real http(s) URLs —
+ * the feed path varies by platform (Wild Apricot uses /events/rss), so there
+ * is nothing to expand.
+ */
+export function parseRssFeeds(raw: string): RssFeed[] {
+  const feeds: RssFeed[] = [];
+  for (const { value, name } of parseLines(raw)) {
+    if (!/^https?:\/\//i.test(value)) continue;
+    feeds.push({ url: value, name: name || "Events" });
+  }
+  return feeds;
+}
+
+/**
  * Per-line validation for the admin UI, so a typo is reported on save
  * instead of silently dropping a calendar.
  */
@@ -155,6 +183,16 @@ export function validateFeeds(settings: FeedSettings): string[] {
     if (!value) return;
     if (!/^https?:\/\//i.test(value)) {
       errors.push(`Squarespace sources, line ${i + 1}: "${value}" must be a full http(s) URL.`);
+    }
+  });
+
+  (settings.rss ?? "").split(/\r?\n/).forEach((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) return;
+    const value = trimmed.includes("|") ? trimmed.slice(0, trimmed.indexOf("|")).trim() : trimmed;
+    if (!value) return;
+    if (!/^https?:\/\//i.test(value)) {
+      errors.push(`RSS feeds, line ${i + 1}: "${value}" must be a full http(s) URL.`);
     }
   });
 

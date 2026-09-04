@@ -680,12 +680,20 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
 interface FeedSettings {
   ics: string;
   squarespace: string;
+  rss: string;
 }
 
 interface ResolvedFeeds {
   ics: { url: string; name: string; gcalId: string }[];
   squarespace: { url: string; name: string }[];
+  rss: { url: string; name: string }[];
 }
+
+const AREA_LABELS: Record<keyof FeedSettings, string> = {
+  ics: "Calendar feeds, one per line",
+  squarespace: "Squarespace sources, one per line",
+  rss: "Events RSS feeds, one per line",
+};
 
 function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme"] }) {
   const [feeds, setFeeds] = useState<FeedSettings | null>(null);
@@ -737,9 +745,9 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
   const area = (key: keyof FeedSettings) => (
     <textarea
       id={`feeds-${key}`}
-      aria-label={key === "ics" ? "Calendar feeds, one per line" : "Squarespace sources, one per line"}
+      aria-label={AREA_LABELS[key]}
       value={feeds?.[key] ?? ""}
-      rows={key === "ics" ? 5 : 4}
+      rows={key === "ics" ? 5 : 3}
       spellCheck={false}
       onChange={e => {
         setFeeds(f => (f ? { ...f, [key]: e.target.value } : f));
@@ -847,6 +855,21 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
           </div>
         </div>
 
+        <div>
+          <label htmlFor="feeds-rss" style={labelStyle}>
+            Events RSS Feeds <span style={{ opacity: 0.7 }}>(one per line, optional)</span>
+          </label>
+          {area("rss")}
+          <div style={hintStyle}>
+            For orgs on Wild Apricot and similar platforms, which publish no export at all.
+            Use the full URL of their events RSS feed — on Wild Apricot that is the events page
+            with <code>/rss</code> on the end. These carry a start time only: the feed has no end
+            time or location, so those are left blank rather than guessed.
+            <br />
+            <code>https://www.example.org/events/rss | Example Org</code>
+          </div>
+        </div>
+
         {resolved && (
           <div style={{
             borderTop: `1px solid ${theme.border}`,
@@ -855,9 +878,9 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
             color: theme.textMuted,
           }}>
             <div style={{ ...labelStyle, marginBottom: "6px" }}>
-              Currently reading ({resolved.ics.length + resolved.squarespace.length})
+              Currently reading ({resolved.ics.length + resolved.squarespace.length + resolved.rss.length})
             </div>
-            {resolved.ics.length + resolved.squarespace.length === 0 && (
+            {resolved.ics.length + resolved.squarespace.length + resolved.rss.length === 0 && (
               <div style={{ opacity: 0.8 }}>No readable sources.</div>
             )}
             {resolved.ics.map((f, i) => (
@@ -872,6 +895,15 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
                 <span style={{ opacity: 0.6, minWidth: "14px" }}>{resolved.ics.length + i + 1}.</span>
                 <span style={{ color: theme.textPrimary, minWidth: "170px" }}>{f.name}</span>
                 <span style={{ opacity: 0.75, wordBreak: "break-all" }}>{f.url} <em>(Squarespace)</em></span>
+              </div>
+            ))}
+            {resolved.rss.map((f, i) => (
+              <div key={`rss-${f.url}`} style={{ display: "flex", gap: "8px", marginBottom: "3px" }}>
+                <span style={{ opacity: 0.6, minWidth: "14px" }}>
+                  {resolved.ics.length + resolved.squarespace.length + i + 1}.
+                </span>
+                <span style={{ color: theme.textPrimary, minWidth: "170px" }}>{f.name}</span>
+                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>{f.url} <em>(RSS)</em></span>
               </div>
             ))}
           </div>

@@ -6,7 +6,7 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  DEFAULT_FEEDS, normalizeFeed, parseIcsFeeds, parseSquarespaceFeeds, validateFeeds,
+  DEFAULT_FEEDS, normalizeFeed, parseIcsFeeds, parseSquarespaceFeeds, parseRssFeeds, validateFeeds,
 } from "./feeds";
 
 const WARD_ID = "c_50dc8883383193a9f6ba4d86cd23a836978e1d42028f0e7bb263955d5539912c@group.calendar.google.com";
@@ -107,19 +107,56 @@ describe("validateFeeds", () => {
   });
 
   test("reports the offending line number for a bad ics value", () => {
-    const errors = validateFeeds({ ics: "https://ok.com/a.ics | A\nnot a feed | B", squarespace: "" });
+    const errors = validateFeeds({ ics: "https://ok.com/a.ics | A\nnot a feed | B", squarespace: "", rss: "" });
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("line 2");
     expect(errors[0]).toContain("not a feed");
   });
 
   test("requires squarespace entries to be full URLs", () => {
-    const errors = validateFeeds({ ics: "", squarespace: "thegreaterrockwell.org/events | GRO" });
+    const errors = validateFeeds({ ics: "", squarespace: "thegreaterrockwell.org/events | GRO", rss: "" });
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("full http(s) URL");
   });
 
   test("comments and blanks never produce errors", () => {
-    expect(validateFeeds({ ics: "# just a note\n\n", squarespace: "\n# and here\n" })).toEqual([]);
+    expect(validateFeeds({ ics: "# just a note\n\n", squarespace: "\n# and here\n", rss: "# none\n" })).toEqual([]);
+  });
+});
+
+describe("parseRssFeeds", () => {
+  test("parses url + display name", () => {
+    const feeds = parseRssFeeds("https://www.dankhaus.com/events/rss | DANK Haus");
+    expect(feeds).toEqual([{ url: "https://www.dankhaus.com/events/rss", name: "DANK Haus" }]);
+  });
+
+  test("falls back to a default name when the pipe is omitted", () => {
+    expect(parseRssFeeds("https://example.org/events/rss")[0].name).toBe("Events");
+  });
+
+  test("skips comments, blanks, and non-URL values", () => {
+    const feeds = parseRssFeeds([
+      "# DANK Haus",
+      "",
+      "example.org/events/rss | no scheme",
+      "https://example.org/events/rss | Example",
+    ].join("\n"));
+    expect(feeds).toHaveLength(1);
+    expect(feeds[0].name).toBe("Example");
+  });
+
+  test("the seeded default includes the DANK Haus feed", () => {
+    const feeds = parseRssFeeds(DEFAULT_FEEDS.rss);
+    expect(feeds).toHaveLength(1);
+    expect(feeds[0].url).toBe("https://www.dankhaus.com/events/rss");
+  });
+});
+
+describe("validateFeeds — rss", () => {
+  test("requires rss entries to be full URLs, reporting the line", () => {
+    const errors = validateFeeds({ ics: "", squarespace: "", rss: "https://ok.org/rss | A\ndankhaus.com/events/rss | B" });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("line 2");
+    expect(errors[0]).toContain("full http(s) URL");
   });
 });

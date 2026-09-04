@@ -6,10 +6,11 @@ import path from "node:path";
 import { auth, ADMIN_EMAIL_ALLOWLIST } from "./auth";
 import { requireAdminAuth } from "./middleware/auth";
 import { fetchSquarespaceEvents } from "./connectors/squarespace";
+import { fetchRssEvents } from "./connectors/rss";
 import { DEFAULT_TZ, toChicagoISO } from "./lib/time";
 import { dedupeEvents, type DedupeCluster } from "./lib/dedupe";
 import {
-  DEFAULT_FEEDS, parseIcsFeeds, parseSquarespaceFeeds, validateFeeds,
+  DEFAULT_FEEDS, parseIcsFeeds, parseSquarespaceFeeds, parseRssFeeds, validateFeeds,
   type FeedSettings,
 } from "./lib/feeds";
 
@@ -22,9 +23,13 @@ import {
 //   ics          — any .ics feed, or a bare Google Calendar id.
 //   squarespace  — neighborhood orgs on Squarespace publish no usable .ics,
 //                  but their events page exposes JSON at ?format=json (see
-//                  connectors/squarespace.ts). Supplemental: if one is down
-//                  or changes shape the ward's own feeds must still render,
-//                  so failures there are logged and skipped.
+//                  connectors/squarespace.ts).
+//   rss          — orgs on Wild Apricot publish no export at all, but do
+//                  expose an events RSS feed whose pubDate is the event start
+//                  (see connectors/rss.ts). Start time only, no end.
+//
+// The last two are supplemental: if one is down or changes shape the ward's
+// own feeds must still render, so failures there are logged and skipped.
 
 // ── Category persistence ──────────────────────────────────────────────────────
 // DATA_DIR env var → set to a Railway volume mount path for persistence across deploys.
@@ -69,6 +74,7 @@ function loadFeeds(): FeedSettings {
     return {
       ics: typeof parsed.ics === "string" ? parsed.ics : DEFAULT_FEEDS.ics,
       squarespace: typeof parsed.squarespace === "string" ? parsed.squarespace : DEFAULT_FEEDS.squarespace,
+      rss: typeof parsed.rss === "string" ? parsed.rss : DEFAULT_FEEDS.rss,
     };
   } catch (e: any) {
     // A missing file is expected until something is saved from the admin
@@ -421,6 +427,7 @@ async function fetchICalEvents(
 ): Promise<{ events: any[]; clusters: DedupeCluster[] }> {
   const icsFeeds = parseIcsFeeds(runtimeFeeds.ics);
   const squarespaceFeeds = parseSquarespaceFeeds(runtimeFeeds.squarespace);
+  const rssFeeds = parseRssFeeds(runtimeFeeds.rss);
 
   // _rank decides which record survives a merge: lower wins. Feeds are ranked
   // in the order they are listed in the admin panel, so the most
@@ -454,6 +461,25 @@ async function fetchICalEvents(
       }
     } else {
       console.error(`[squarespace] ${src.name} failed, skipping:`, r.reason?.message ?? r.reason);
+    }
+  });
+
+  // RSS sources rank behind every ICS and Squarespace feed, so a ward or
+  // Squarespace listing always wins a duplicate merge over one of these —
+  // these carry the least data (no end time, no location).
+  const rssResults = await Promise.allSettled(
+    rssFeeds.map(src => fetchRssEvents(src, timeMin, timeMax)),
+  );
+  rssResults.forEach((r, i) => {
+    const src = rssFeeds[i];
+    if (r.status === "fulfilled") {
+      console.log(`[rss] ${src.name}: ${r.value.length} event(s) in window`);
+      for (const ev of r.value) {
+        ev._rank = icsFeeds.length + squarespaceFeeds.length + i;
+        allEvents.push(ev);
+      }
+    } else {
+      console.error(`[rss] ${src.name} failed, skipping:`, r.reason?.message ?? r.reason);
     }
   });
 
@@ -690,6 +716,7 @@ const app = new Hono()
       resolved: {
         ics: parseIcsFeeds(runtimeFeeds.ics),
         squarespace: parseSquarespaceFeeds(runtimeFeeds.squarespace),
+        rss: parseRssFeeds(runtimeFeeds.rss),
       },
     }, 200);
   })
@@ -701,6 +728,7 @@ const app = new Hono()
       const next: FeedSettings = {
         ics: typeof body.ics === "string" ? body.ics : "",
         squarespace: typeof body.squarespace === "string" ? body.squarespace : "",
+        rss: typeof body.rss === "string" ? body.rss : "",
       };
 
       // Reject typos rather than silently dropping a calendar.
@@ -709,7 +737,11 @@ const app = new Hono()
 
       // At least one readable calendar must survive, otherwise the site would
       // save itself into a permanently empty state.
-      if (parseIcsFeeds(next.ics).length === 0 && parseSquarespaceFeeds(next.squarespace).length === 0) {
+      if (
+        parseIcsFeeds(next.ics).length === 0 &&
+        parseSquarespaceFeeds(next.squarespace).length === 0 &&
+        parseRssFeeds(next.rss).length === 0
+      ) {
         return c.json({ error: "Add at least one calendar feed — saving would leave the site with no events." }, 400);
       }
 
@@ -721,6 +753,7 @@ const app = new Hono()
         resolved: {
           ics: parseIcsFeeds(runtimeFeeds.ics),
           squarespace: parseSquarespaceFeeds(runtimeFeeds.squarespace),
+          rss: parseRssFeeds(runtimeFeeds.rss),
         },
       }, 200);
     } catch (e: any) {

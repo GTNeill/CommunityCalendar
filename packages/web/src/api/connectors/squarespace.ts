@@ -23,6 +23,7 @@
 // UI) treats Squarespace sources identically to Google iCal feeds.
 
 import { toChicagoISO } from "../lib/time";
+import { htmlToText } from "../lib/html";
 
 export interface SquarespaceSource {
   /** Full URL of the events collection page, e.g. "https://example.org/events" */
@@ -62,25 +63,6 @@ interface SquarespaceCollectionResponse {
 // this many pages — a guard against an unbounded crawl of a site with years
 // of history behind it.
 const MAX_PAST_PAGES = 6;
-
-// Squarespace's own HTML excerpt/body markup is far richer than the calendar
-// needs (inline styles, data-rte attributes, CDN <img> tags). The UI linkifies
-// and renders description text, so flatten to readable plain text and let it
-// re-linkify bare URLs itself.
-function htmlToText(html: string): string {
-  return html
-    .replace(/<\s*(br|\/p|\/div|\/h[1-6]|\/li)\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&rsquo;/gi, "'")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
 
 function formatLocation(loc?: SquarespaceLocation): string {
   if (!loc) return "";

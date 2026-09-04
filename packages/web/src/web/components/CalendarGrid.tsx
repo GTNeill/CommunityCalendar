@@ -70,9 +70,13 @@ function EventPopup({
   }, [anchorRef, isMobile]);
 
   const dur = fmtDuration(ev.start, ev.end, ev.isAllDay);
+  // Some sources (events RSS) publish a start with no end. Render those
+  // start-only rather than leaving a dangling en-dash.
   const timeStr = ev.isAllDay
     ? "All day"
-    : `${fmtTime(ev.start, false)} – ${ev.end ? fmtTime(ev.end, false) : ""}`;
+    : ev.end
+      ? `${fmtTime(ev.start, false)} – ${fmtTime(ev.end, false)}`
+      : fmtTime(ev.start, false);
 
   return (
     <div

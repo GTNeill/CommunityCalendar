@@ -5,24 +5,26 @@ import fs from "node:fs";
 import path from "node:path";
 import { auth, ADMIN_EMAIL_ALLOWLIST } from "./auth";
 import { requireAdminAuth } from "./middleware/auth";
-import { fetchSquarespaceEvents, type SquarespaceSource } from "./connectors/squarespace";
+import { fetchSquarespaceEvents } from "./connectors/squarespace";
 import { DEFAULT_TZ, toChicagoISO } from "./lib/time";
 import { dedupeEvents, type DedupeCluster } from "./lib/dedupe";
+import {
+  DEFAULT_FEEDS, parseIcsFeeds, parseSquarespaceFeeds, validateFeeds,
+  type FeedSettings,
+} from "./lib/feeds";
 
-// ── 40th Ward public Google Calendar IDs ─────────────────────────────────────
-const CAL1_ID = "c_50dc8883383193a9f6ba4d86cd23a836978e1d42028f0e7bb263955d5539912c@group.calendar.google.com";
-const CAL2_ID = "c_05dba706bb25f28f63bfc0b821c9f8d5e29d9f2b105e78949388b675eb801572@group.calendar.google.com";
-
-// ── Squarespace event collections ────────────────────────────────────────────
-// Neighborhood orgs on Squarespace publish no usable .ics feed, but their
-// events page exposes structured JSON at ?format=json. See
-// connectors/squarespace.ts. These sources are supplemental: if one is down or
-// changes shape, the ward's own Google feeds must still render, so failures
-// here are logged and skipped rather than failing /api/events.
-const SQUARESPACE_SOURCES: SquarespaceSource[] = [
-  { url: "https://www.thegreaterrockwell.org/events", name: "Greater Rockwell Organization" },
-  { url: "https://www.heartoflincolnsquare.org/events", name: "Heart of Lincoln Square" },
-];
+// ── Calendar sources ─────────────────────────────────────────────────────────
+// Which calendars are read is configured at runtime and editable from
+// /admincat, at parity with the WordPress plugin's Settings → Calendar Cats.
+// The seed values and the line format live in lib/feeds.ts.
+//
+// Two kinds of source:
+//   ics          — any .ics feed, or a bare Google Calendar id.
+//   squarespace  — neighborhood orgs on Squarespace publish no usable .ics,
+//                  but their events page exposes JSON at ?format=json (see
+//                  connectors/squarespace.ts). Supplemental: if one is down
+//                  or changes shape the ward's own feeds must still render,
+//                  so failures there are logged and skipped.
 
 // ── Category persistence ──────────────────────────────────────────────────────
 // DATA_DIR env var → set to a Railway volume mount path for persistence across deploys.
@@ -35,6 +37,7 @@ const DATA_DIR  = process.env.DATA_DIR ?? _defaultDataDir;
 const DATA_FILE = path.join(DATA_DIR, "categories.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "site-settings.json");
 const ICONS_DIR = path.join(DATA_DIR, "icons");
+const FEEDS_FILE = path.join(DATA_DIR, "feeds.json");
 
 // ── Site settings persistence (header/subtitle/footer link) ──────────────────
 export interface SiteSettings {
@@ -58,6 +61,33 @@ const DEFAULT_SETTINGS: SiteSettings = {
 
 let runtimeSettings: SiteSettings = DEFAULT_SETTINGS;
 
+// ── Feed source persistence ──────────────────────────────────────────────────
+function loadFeeds(): FeedSettings {
+  try {
+    const raw = fs.readFileSync(FEEDS_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    return {
+      ics: typeof parsed.ics === "string" ? parsed.ics : DEFAULT_FEEDS.ics,
+      squarespace: typeof parsed.squarespace === "string" ? parsed.squarespace : DEFAULT_FEEDS.squarespace,
+    };
+  } catch (e: any) {
+    // A missing file is expected until something is saved from the admin
+    // panel — the seeded defaults are correct until then.
+    if (e?.code === "ENOENT") console.log(`[feeds] No feeds.json yet at ${FEEDS_FILE} — using seeded defaults.`);
+    else console.error("Failed to load feeds.json, using previous/defaults:", e);
+    return runtimeFeeds ?? DEFAULT_FEEDS;
+  }
+}
+
+function saveFeeds(next: FeedSettings): void {
+  fs.mkdirSync(path.dirname(FEEDS_FILE), { recursive: true });
+  const tmpFile = `${FEEDS_FILE}.tmp-${process.pid}-${Date.now()}`;
+  fs.writeFileSync(tmpFile, JSON.stringify(next, null, 2), "utf-8");
+  fs.renameSync(tmpFile, FEEDS_FILE);
+}
+
+let runtimeFeeds: FeedSettings = DEFAULT_FEEDS;
+
 function loadSettings(): SiteSettings {
   try {
     const raw = fs.readFileSync(SETTINGS_FILE, "utf-8");
@@ -80,6 +110,7 @@ function saveSettings(settings: SiteSettings): void {
 }
 
 runtimeSettings = loadSettings();
+runtimeFeeds = loadFeeds();
 
 export interface CategoryDef {
   key: string;
@@ -388,22 +419,21 @@ async function fetchICalEvents(
   timeMax: Date,
   enabled = true,
 ): Promise<{ events: any[]; clusters: DedupeCluster[] }> {
-  const calIds = [
-    { id: CAL1_ID, name: "40th Ward Events" },
-    { id: CAL2_ID, name: "40th Ward Community" },
-  ];
+  const icsFeeds = parseIcsFeeds(runtimeFeeds.ics);
+  const squarespaceFeeds = parseSquarespaceFeeds(runtimeFeeds.squarespace);
 
-  // _rank decides which record survives a merge: lower wins. The ward's own
-  // calendars are the most authoritative for ward events, and supplemental
-  // scraped sources rank behind them. See lib/dedupe.ts.
+  // _rank decides which record survives a merge: lower wins. Feeds are ranked
+  // in the order they are listed in the admin panel, so the most
+  // authoritative calendar goes first; supplemental scraped sources rank
+  // behind all of them. See lib/dedupe.ts.
   const allEvents: any[] = [];
-  await Promise.all(calIds.map(async ({ id, name }, rank) => {
-    const encoded = encodeURIComponent(id);
-    const url = `https://calendar.google.com/calendar/ical/${encoded}/public/basic.ics`;
+  await Promise.all(icsFeeds.map(async ({ url, name, gcalId }, rank) => {
     const res = await fetch(url, { headers: { "User-Agent": "40thWardCalendar/1.0" } });
     if (!res.ok) throw new Error(`iCal fetch failed for ${name}: ${res.status}`);
     const ics = await res.text();
-    for (const ev of parseICS(ics, name, id, timeMin, timeMax)) {
+    // gcalId is empty for non-Google feeds, which makes buildGCalLink()
+    // return no link rather than a broken one.
+    for (const ev of parseICS(ics, name, gcalId, timeMin, timeMax)) {
       ev._rank = rank;
       allEvents.push(ev);
     }
@@ -412,14 +442,14 @@ async function fetchICalEvents(
   // Supplemental non-ICS sources. Deliberately settled, not awaited as a
   // group: a broken third-party site must never take down the ward calendar.
   const sqspResults = await Promise.allSettled(
-    SQUARESPACE_SOURCES.map(src => fetchSquarespaceEvents(src, timeMin, timeMax)),
+    squarespaceFeeds.map(src => fetchSquarespaceEvents(src, timeMin, timeMax)),
   );
   sqspResults.forEach((r, i) => {
-    const src = SQUARESPACE_SOURCES[i];
+    const src = squarespaceFeeds[i];
     if (r.status === "fulfilled") {
       console.log(`[squarespace] ${src.name}: ${r.value.length} event(s) in window`);
       for (const ev of r.value) {
-        ev._rank = 10 + i;
+        ev._rank = icsFeeds.length + i;
         allEvents.push(ev);
       }
     } else {
@@ -644,6 +674,55 @@ const app = new Hono()
       saveSettings(next);
       runtimeSettings = loadSettings();
       return c.json({ ok: true, settings: runtimeSettings }, 200);
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  })
+
+  // ── Admin: read the calendar feed sources ─────────────────────────────────
+  // Admin-only, same as the WordPress plugin's settings screen. Feed URLs are
+  // not part of the public /api/settings payload.
+  .get("/admin/feeds", requireAdminAuth, (c) => {
+    return c.json({
+      feeds: runtimeFeeds,
+      // Echo what the raw text actually resolves to, so the admin can see
+      // that a bare Google Calendar id expanded to the URL they expect.
+      resolved: {
+        ics: parseIcsFeeds(runtimeFeeds.ics),
+        squarespace: parseSquarespaceFeeds(runtimeFeeds.squarespace),
+      },
+    }, 200);
+  })
+
+  // ── Admin: replace the calendar feed sources ──────────────────────────────
+  .put("/admin/feeds", requireAdminAuth, async (c) => {
+    try {
+      const body = await c.req.json();
+      const next: FeedSettings = {
+        ics: typeof body.ics === "string" ? body.ics : "",
+        squarespace: typeof body.squarespace === "string" ? body.squarespace : "",
+      };
+
+      // Reject typos rather than silently dropping a calendar.
+      const errors = validateFeeds(next);
+      if (errors.length > 0) return c.json({ error: errors.join(" ") }, 400);
+
+      // At least one readable calendar must survive, otherwise the site would
+      // save itself into a permanently empty state.
+      if (parseIcsFeeds(next.ics).length === 0 && parseSquarespaceFeeds(next.squarespace).length === 0) {
+        return c.json({ error: "Add at least one calendar feed — saving would leave the site with no events." }, 400);
+      }
+
+      saveFeeds(next);
+      runtimeFeeds = loadFeeds();
+      return c.json({
+        ok: true,
+        feeds: runtimeFeeds,
+        resolved: {
+          ics: parseIcsFeeds(runtimeFeeds.ics),
+          squarespace: parseSquarespaceFeeds(runtimeFeeds.squarespace),
+        },
+      }, 200);
     } catch (e: any) {
       return c.json({ error: e.message }, 500);
     }

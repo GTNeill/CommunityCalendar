@@ -673,6 +673,214 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
   );
 }
 
+// ── Calendar Feed Sources panel ───────────────────────────────────────────────
+// Parity with the WordPress plugin's Settings -> Calendar Cats feeds box. The
+// line format is identical on purpose, so a feed list can be pasted between
+// the plugin and the site without editing.
+interface FeedSettings {
+  ics: string;
+  squarespace: string;
+}
+
+interface ResolvedFeeds {
+  ics: { url: string; name: string; gcalId: string }[];
+  squarespace: { url: string; name: string }[];
+}
+
+function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme"] }) {
+  const [feeds, setFeeds] = useState<FeedSettings | null>(null);
+  const [resolved, setResolved] = useState<ResolvedFeeds | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [status, setStatus] = useState<{ msg: string; ok: boolean } | null>(null);
+  const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useUnsavedGuard(dirty);
+
+  useEffect(() => {
+    adminFetch("/api/admin/feeds")
+      .then(r => r.json())
+      .then((data: { feeds: FeedSettings; resolved: ResolvedFeeds }) => {
+        setFeeds(data.feeds);
+        setResolved(data.resolved);
+      })
+      .catch(e => setStatus({ msg: `Failed to load feeds: ${e.message}`, ok: false }));
+  }, []);
+
+  const showStatus = (msg: string, ok: boolean) => {
+    setStatus({ msg, ok });
+    if (statusTimer.current) clearTimeout(statusTimer.current);
+    statusTimer.current = setTimeout(() => setStatus(null), 6000);
+  };
+
+  const save = async () => {
+    if (!feeds) return;
+    setSaving(true);
+    try {
+      const res = await adminFetch("/api/admin/feeds", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(feeds),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      setResolved(data.resolved);
+      showStatus("Calendar sources saved.", true);
+      setDirty(false);
+    } catch (e: any) {
+      showStatus(e.message, false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const area = (key: keyof FeedSettings) => (
+    <textarea
+      id={`feeds-${key}`}
+      aria-label={key === "ics" ? "Calendar feeds, one per line" : "Squarespace sources, one per line"}
+      value={feeds?.[key] ?? ""}
+      rows={key === "ics" ? 5 : 4}
+      spellCheck={false}
+      onChange={e => {
+        setFeeds(f => (f ? { ...f, [key]: e.target.value } : f));
+        setDirty(true);
+      }}
+      style={{
+        ...SETTINGS_FIELD_STYLE,
+        background: theme.surface,
+        color: theme.textPrimary,
+        borderColor: theme.border,
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        fontSize: "12px",
+        lineHeight: 1.6,
+        resize: "vertical",
+      }}
+    />
+  );
+
+  if (!feeds) {
+    return (
+      <div style={{ padding: "16px 0", color: theme.textMuted, fontSize: "13px" }}>
+        Loading calendar sources…
+      </div>
+    );
+  }
+
+  const labelStyle: React.CSSProperties = {
+    display: "block", fontSize: "11px", color: theme.textMuted, marginBottom: "4px",
+    textTransform: "uppercase", letterSpacing: "0.04em",
+  };
+  const hintStyle: React.CSSProperties = {
+    fontSize: "11px", color: theme.textMuted, opacity: 0.85, marginTop: "5px", lineHeight: 1.5,
+  };
+
+  return (
+    <div style={{
+      background: theme.surface,
+      border: `1px solid ${theme.border}`,
+      borderRadius: "10px",
+      padding: "18px 20px",
+      marginBottom: "8px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+        <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 600, color: theme.textPrimary }}>
+          Calendar Sources
+        </h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {status && (
+            <span style={{
+              fontSize: "12px",
+              color: status.ok ? "#4caf8a" : "#e05555",
+              background: status.ok ? "rgba(76,175,138,0.1)" : "rgba(224,85,85,0.1)",
+              border: `1px solid ${status.ok ? "rgba(76,175,138,0.3)" : "rgba(224,85,85,0.3)"}`,
+              borderRadius: "6px",
+              padding: "4px 10px",
+              maxWidth: "460px",
+            }}>{status.msg}</span>
+          )}
+          <button
+            onClick={save}
+            disabled={saving || !dirty}
+            style={{
+              padding: "7px 16px",
+              background: dirty ? theme.teal : `${theme.teal}33`,
+              border: `1px solid ${theme.teal}`,
+              borderRadius: "6px",
+              color: dirty ? "#fff" : `${theme.textPrimary}66`,
+              cursor: dirty ? "pointer" : "not-allowed",
+              fontSize: "12px",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >{saving ? "Saving…" : "Save Sources"}</button>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: "16px" }}>
+        <div>
+          <label htmlFor="feeds-ics" style={labelStyle}>
+            Calendar Feeds <span style={{ opacity: 0.7 }}>(one per line)</span>
+          </label>
+          {area("ics")}
+          <div style={hintStyle}>
+            Each line is a full <code>.ics</code> URL or a bare Google Calendar id, with an
+            optional display name after a pipe. Lines starting with <code>#</code> are ignored.
+            Order matters: when two calendars list the same event, the one higher in this list wins.
+            <br />
+            <code>abc123@group.calendar.google.com | Ward Events</code>
+            <br />
+            <code>https://example.org/events.ics | Chamber Events</code>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="feeds-squarespace" style={labelStyle}>
+            Squarespace Sources <span style={{ opacity: 0.7 }}>(one per line, optional)</span>
+          </label>
+          {area("squarespace")}
+          <div style={hintStyle}>
+            For neighborhood orgs on Squarespace, which publish no usable <code>.ics</code>.
+            Use the full URL of their events page. These are supplemental — if one is down or
+            changes shape, it is skipped and the calendars above still render.
+            <br />
+            <code>https://www.example.org/events | Example Org</code>
+          </div>
+        </div>
+
+        {resolved && (
+          <div style={{
+            borderTop: `1px solid ${theme.border}`,
+            paddingTop: "12px",
+            fontSize: "11px",
+            color: theme.textMuted,
+          }}>
+            <div style={{ ...labelStyle, marginBottom: "6px" }}>
+              Currently reading ({resolved.ics.length + resolved.squarespace.length})
+            </div>
+            {resolved.ics.length + resolved.squarespace.length === 0 && (
+              <div style={{ opacity: 0.8 }}>No readable sources.</div>
+            )}
+            {resolved.ics.map((f, i) => (
+              <div key={`ics-${f.url}`} style={{ display: "flex", gap: "8px", marginBottom: "3px" }}>
+                <span style={{ opacity: 0.6, minWidth: "14px" }}>{i + 1}.</span>
+                <span style={{ color: theme.textPrimary, minWidth: "170px" }}>{f.name}</span>
+                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>{f.url}</span>
+              </div>
+            ))}
+            {resolved.squarespace.map((f, i) => (
+              <div key={`sqsp-${f.url}`} style={{ display: "flex", gap: "8px", marginBottom: "3px" }}>
+                <span style={{ opacity: 0.6, minWidth: "14px" }}>{resolved.ics.length + i + 1}.</span>
+                <span style={{ color: theme.textPrimary, minWidth: "170px" }}>{f.name}</span>
+                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>{f.url} <em>(Squarespace)</em></span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 let newKeyCounter = 0;
 function newKey() { return `__new_${++newKeyCounter}`; }
@@ -924,6 +1132,7 @@ function AdminCatInner() {
       {/* Site Settings */}
       <div style={{ padding: "24px 32px 0", maxWidth: "1400px", margin: "0 auto" }}>
         <SiteSettingsPanel theme={theme} />
+        <FeedSourcesPanel theme={theme} />
       </div>
 
       {/* Body */}

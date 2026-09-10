@@ -50,6 +50,26 @@ describe("parseIcsFeeds", () => {
     expect(feeds[0].gcalId).toBe(WARD_ID);
   });
 
+  test("the seeded defaults carry an explicit page link, since a raw ICS feed has none of its own", () => {
+    const feeds = parseIcsFeeds(DEFAULT_FEEDS.ics);
+    expect(feeds[0].pageUrl).toBe("https://40thward.org/events/");
+    expect(feeds[1].pageUrl).toBe("https://40thward.org/events/");
+  });
+
+  test("reads an explicit page link from the optional third pipe field", () => {
+    const feeds = parseIcsFeeds("https://e.com/a.ics | A | https://e.com/events/");
+    expect(feeds[0].pageUrl).toBe("https://e.com/events/");
+  });
+
+  test("has no page link when the third field is omitted", () => {
+    expect(parseIcsFeeds("https://e.com/a.ics | A")[0].pageUrl).toBe("");
+    expect(parseIcsFeeds("https://e.com/a.ics")[0].pageUrl).toBe("");
+  });
+
+  test("drops a third field that isn't a real URL rather than surfacing a bad link", () => {
+    expect(parseIcsFeeds("https://e.com/a.ics | A | not a url")[0].pageUrl).toBe("");
+  });
+
   test("ignores blank lines and # comments", () => {
     const feeds = parseIcsFeeds("# a note\n\nhttps://e.com/a.ics | A\n   \n# another\nhttps://e.com/b.ics | B");
     expect(feeds.map(f => f.name)).toEqual(["A", "B"]);
@@ -99,6 +119,17 @@ describe("parseSquarespaceFeeds", () => {
   test("ignores comments and blanks", () => {
     expect(parseSquarespaceFeeds("# nope\n\nhttps://x.org/events | X")).toHaveLength(1);
   });
+
+  test("the feed URL doubles as the page link, since it's already the events page", () => {
+    const feeds = parseSquarespaceFeeds(DEFAULT_FEEDS.squarespace);
+    expect(feeds[0].pageUrl).toBe("https://www.thegreaterrockwell.org/events");
+    expect(feeds[1].pageUrl).toBe("https://www.heartoflincolnsquare.org/events");
+  });
+
+  test("an explicit third field overrides the feed URL as the page link", () => {
+    const feeds = parseSquarespaceFeeds("https://x.org/events | X | https://x.org/calendar-page");
+    expect(feeds[0].pageUrl).toBe("https://x.org/calendar-page");
+  });
 });
 
 describe("validateFeeds", () => {
@@ -122,12 +153,27 @@ describe("validateFeeds", () => {
   test("comments and blanks never produce errors", () => {
     expect(validateFeeds({ ics: "# just a note\n\n", squarespace: "\n# and here\n", rss: "# none\n" })).toEqual([]);
   });
+
+  test("rejects a page link (third field) that isn't a full http(s) URL", () => {
+    const errors = validateFeeds({ ics: "https://ok.com/a.ics | A | not-a-url", squarespace: "", rss: "" });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("line 1");
+    expect(errors[0]).toContain("page link");
+  });
+
+  test("accepts a well-formed page link on any of the three feed types", () => {
+    expect(validateFeeds({
+      ics: "https://ok.com/a.ics | A | https://ok.com/events/",
+      squarespace: "https://x.org/events | X | https://x.org/calendar",
+      rss: "https://y.org/events/rss | Y | https://y.org/events",
+    })).toEqual([]);
+  });
 });
 
 describe("parseRssFeeds", () => {
   test("parses url + display name", () => {
     const feeds = parseRssFeeds("https://www.dankhaus.com/events/rss | DANK Haus");
-    expect(feeds).toEqual([{ url: "https://www.dankhaus.com/events/rss", name: "DANK Haus" }]);
+    expect(feeds).toEqual([{ url: "https://www.dankhaus.com/events/rss", name: "DANK Haus", pageUrl: "" }]);
   });
 
   test("falls back to a default name when the pipe is omitted", () => {
@@ -145,10 +191,15 @@ describe("parseRssFeeds", () => {
     expect(feeds[0].name).toBe("Example");
   });
 
-  test("the seeded default includes the DANK Haus feed", () => {
+  test("the seeded default includes the DANK Haus feed, with its own page link (not the /rss URL)", () => {
     const feeds = parseRssFeeds(DEFAULT_FEEDS.rss);
     expect(feeds).toHaveLength(1);
     expect(feeds[0].url).toBe("https://www.dankhaus.com/events/rss");
+    expect(feeds[0].pageUrl).toBe("https://www.dankhaus.com/events");
+  });
+
+  test("has no page link when the third field is omitted — the /rss URL itself is not a page", () => {
+    expect(parseRssFeeds("https://example.org/events/rss | Example")[0].pageUrl).toBe("");
   });
 });
 

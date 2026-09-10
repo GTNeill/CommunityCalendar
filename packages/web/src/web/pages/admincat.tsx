@@ -698,9 +698,9 @@ interface FeedSettings {
 }
 
 interface ResolvedFeeds {
-  ics: { url: string; name: string; gcalId: string }[];
-  squarespace: { url: string; name: string }[];
-  rss: { url: string; name: string }[];
+  ics: { url: string; name: string; gcalId: string; pageUrl: string }[];
+  squarespace: { url: string; name: string; pageUrl: string }[];
+  rss: { url: string; name: string; pageUrl: string }[];
 }
 
 const AREA_LABELS: Record<keyof FeedSettings, string> = {
@@ -852,6 +852,12 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
             <code>abc123@group.calendar.google.com | Ward Events</code>
             <br />
             <code>https://example.org/events.ics | Chamber Events</code>
+            <br />
+            A calendar feed has no public page of its own — add a third field with the URL of the
+            website page that presents it (even just as an embedded iframe), so the About popup
+            can link there instead of to raw calendar data. Left off, that source gets no link.
+            <br />
+            <code>abc123@group.calendar.google.com | Ward Events | https://example.org/events/</code>
           </div>
         </div>
 
@@ -866,6 +872,9 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
             changes shape, it is skipped and the calendars above still render.
             <br />
             <code>https://www.example.org/events | Example Org</code>
+            <br />
+            This URL is already the page presenting the calendar, so the About popup links to it
+            automatically — add a third field only if a different page should be linked instead.
           </div>
         </div>
 
@@ -881,6 +890,11 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
             time or location, so those are left blank rather than guessed.
             <br />
             <code>https://www.example.org/events/rss | Example Org</code>
+            <br />
+            The feed URL is rarely the page itself — add a third field with the actual events page
+            so the About popup links there instead of the raw feed.
+            <br />
+            <code>https://www.example.org/events/rss | Example Org | https://www.example.org/events</code>
           </div>
         </div>
 
@@ -901,14 +915,22 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
               <div key={`ics-${f.url}`} style={{ display: "flex", gap: "8px", marginBottom: "3px" }}>
                 <span style={{ opacity: 0.6, minWidth: "14px" }}>{i + 1}.</span>
                 <span style={{ color: theme.textPrimary, minWidth: "170px" }}>{f.name}</span>
-                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>{f.url}</span>
+                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>
+                  {f.url}
+                  {f.pageUrl
+                    ? <> — page: <span style={{ color: theme.primaryText }}>{f.pageUrl}</span></>
+                    : <em style={{ color: "#e05555" }}> — no page link set, About popup won't link this source</em>}
+                </span>
               </div>
             ))}
             {resolved.squarespace.map((f, i) => (
               <div key={`sqsp-${f.url}`} style={{ display: "flex", gap: "8px", marginBottom: "3px" }}>
                 <span style={{ opacity: 0.6, minWidth: "14px" }}>{resolved.ics.length + i + 1}.</span>
                 <span style={{ color: theme.textPrimary, minWidth: "170px" }}>{f.name}</span>
-                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>{f.url} <em>(Squarespace)</em></span>
+                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>
+                  {f.url} <em>(Squarespace)</em>
+                  {f.pageUrl !== f.url && <> — page: <span style={{ color: theme.primaryText }}>{f.pageUrl}</span></>}
+                </span>
               </div>
             ))}
             {resolved.rss.map((f, i) => (
@@ -917,7 +939,12 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
                   {resolved.ics.length + resolved.squarespace.length + i + 1}.
                 </span>
                 <span style={{ color: theme.textPrimary, minWidth: "170px" }}>{f.name}</span>
-                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>{f.url} <em>(RSS)</em></span>
+                <span style={{ opacity: 0.75, wordBreak: "break-all" }}>
+                  {f.url} <em>(RSS)</em>
+                  {f.pageUrl
+                    ? <> — page: <span style={{ color: theme.primaryText }}>{f.pageUrl}</span></>
+                    : <em style={{ color: "#e05555" }}> — no page link set, links to the site's home page instead</em>}
+                </span>
               </div>
             ))}
           </div>

@@ -632,19 +632,22 @@ const app = new Hono()
   // ── Public: which organizations' calendars this site pulls together ──────
   // Organizer names are already public via /api/events (ev.organizer), so
   // this adds no new exposure — it's a de-duplicated, human-readable list for
-  // the About popup. Google Calendar ids stay out of it: there's no public
-  // landing page distinct from the raw feed, and feed URLs are otherwise
-  // admin-only by design (see lib/feeds.ts).
+  // the About popup. Raw feed URLs (the .ics/JSON/RSS endpoints themselves)
+  // stay out of it — admin-only by design (see lib/feeds.ts). What's linked
+  // instead is each source's `pageUrl`: the public website page that
+  // presents the calendar (which may just embed it, e.g. via an iframe),
+  // not the feed data behind it. An ICS feed has no page of its own, so it's
+  // only linked when one has been configured explicitly.
   .get("/sources", (c) => {
     const sources: { name: string; link: string | null }[] = [];
-    for (const { name } of parseIcsFeeds(runtimeFeeds.ics)) {
-      sources.push({ name, link: null });
+    for (const { name, pageUrl } of parseIcsFeeds(runtimeFeeds.ics)) {
+      sources.push({ name, link: pageUrl || null });
     }
-    for (const { name, url } of parseSquarespaceFeeds(runtimeFeeds.squarespace)) {
-      sources.push({ name, link: originOf(url) });
+    for (const { name, pageUrl } of parseSquarespaceFeeds(runtimeFeeds.squarespace)) {
+      sources.push({ name, link: pageUrl || null });
     }
-    for (const { name, url } of parseRssFeeds(runtimeFeeds.rss)) {
-      sources.push({ name, link: originOf(url) });
+    for (const { name, pageUrl, url } of parseRssFeeds(runtimeFeeds.rss)) {
+      sources.push({ name, link: pageUrl || originOf(url) });
     }
     return c.json({ sources }, 200);
   })

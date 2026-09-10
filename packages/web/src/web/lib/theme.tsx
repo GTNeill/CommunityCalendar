@@ -30,7 +30,7 @@ export interface Theme {
   fontBody: string;
 }
 
-// 40th Ward brand palette:
+// Community Calendar brand palette:
 // Deep teal #0b3e4a, teal #147671, light teal #5bb5b1, cream #fffbf4
 // Red/orange accent #CF2C28, secondary #ca482b, text #333333
 
@@ -45,7 +45,7 @@ const DARK: Theme = {
   textFaint: "#7aa8b0",    // was #2a5060 (~1.5:1, unreadable); now 5.78:1
   accent: "#CF2C28",
   accentDark: "#a01e1b",
-  teal: "#147671",         // 40th ward teal — active controls (fill only)
+  teal: "#147671",         // Community Calendar teal — active controls (fill only)
   accentText: "#f0736e",   // #CF2C28 is only 2.9:1 on dark bg; this is 5.3:1
   tealText: "#5bb5b1",     // #147671 is only 2.77:1 on dark bg; this is 6.24:1
   focusRing: "#7fd0cb",
@@ -68,7 +68,7 @@ const LIGHT: Theme = {
   textFaint: "#54777d",    // was #0b3e4a44 (~1.9:1, unreadable); now 4.72:1
   accent: "#CF2C28",
   accentDark: "#a01e1b",
-  teal: "#147671",         // 40th ward teal — active controls (fill only)
+  teal: "#147671",         // Community Calendar teal — active controls (fill only)
   accentText: "#CF2C28",   // 5.03:1 on cream — already safe as foreground
   tealText: "#147671",     // 5.27:1 on cream — already safe as foreground
   focusRing: "#0f5d59",

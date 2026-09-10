@@ -57,11 +57,11 @@ export interface SiteSettings {
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
-  headerTitle: "40th Ward",
+  headerTitle: "Community Calendar",
   headerSubtitle: "Chicago Community Events Calendar",
   // Preserves the credit line that used to be hardcoded in the footer, so
   // existing deploys keep the same text until someone changes it.
-  footerText: "40th Ward of Chicago · Alderperson Andre Vasquez",
+  footerText: "Community Calendar — a neighbor-run project",
   footerLinkText: "40thward.org →",
   footerLinkUrl: "https://40thward.org/events/",
   // Preserves the URL that used to be hardcoded in the header, so existing
@@ -251,6 +251,15 @@ function buildGCalLink(uid: string, calId: string): string {
     return `https://calendar.google.com/calendar/event?eid=${encoded}`;
   } catch {
     return "";
+  }
+}
+
+/** The scheme+host of a feed URL, as a public "learn more about this source" link. */
+function originOf(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
   }
 }
 
@@ -616,6 +625,26 @@ const app = new Hono()
 
   // ── Public: current site settings (header/subtitle/footer link) ──────────
   .get("/settings", (c) => c.json(runtimeSettings, 200))
+
+  // ── Public: which organizations' calendars this site pulls together ──────
+  // Organizer names are already public via /api/events (ev.organizer), so
+  // this adds no new exposure — it's a de-duplicated, human-readable list for
+  // the About popup. Google Calendar ids stay out of it: there's no public
+  // landing page distinct from the raw feed, and feed URLs are otherwise
+  // admin-only by design (see lib/feeds.ts).
+  .get("/sources", (c) => {
+    const sources: { name: string; link: string | null }[] = [];
+    for (const { name } of parseIcsFeeds(runtimeFeeds.ics)) {
+      sources.push({ name, link: null });
+    }
+    for (const { name, url } of parseSquarespaceFeeds(runtimeFeeds.squarespace)) {
+      sources.push({ name, link: originOf(url) });
+    }
+    for (const { name, url } of parseRssFeeds(runtimeFeeds.rss)) {
+      sources.push({ name, link: originOf(url) });
+    }
+    return c.json({ sources }, 200);
+  })
 
   // ── Diagnostics: is Google OAuth actually configured correctly? ────────────
   // ?error=invalid_code in the browser only means "the token exchange failed",

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   RefreshCw, LayoutGrid, CalendarDays, AlertCircle,
-  ChevronLeft, ChevronRight, Sun, Moon, ZoomIn, ZoomOut, Search, X, ExternalLink
+  ChevronLeft, ChevronRight, Sun, Moon, ZoomIn, ZoomOut, Search, X, ExternalLink, Info
 } from "lucide-react";
 import { useEvents } from "../hooks/useEvents";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import CalendarGrid from "../components/CalendarGrid";
 import SkeletonCards from "../components/SkeletonCards";
 import SkeletonTimeline from "../components/SkeletonTimeline";
 import SearchResults from "../components/SearchResults";
+import AboutModal from "../components/AboutModal";
 import { timeSince, getRange, getRollingRange, fmtRangeLabel, toISO, type RangeUnit } from "../lib/calendarUtils";
 import { useTheme } from "../lib/theme";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -137,7 +138,7 @@ export default function Index() {
   const isMobile = useIsMobile();
   const isEmbed = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "1";
   const { data: siteSettings } = useSiteSettings();
-  const headerTitle = siteSettings?.headerTitle ?? "40th Ward";
+  const headerTitle = siteSettings?.headerTitle ?? "Community Calendar";
   const headerSubtitle = siteSettings?.headerSubtitle ?? "Chicago Community Events Calendar";
   const footerText = siteSettings?.footerText ?? "";
   const footerLinkText = siteSettings?.footerLinkText ?? "";
@@ -151,6 +152,7 @@ export default function Index() {
   const [offset, setOffset] = useState(0);
   const [zoom, setZoom] = useState(ZOOM_DEFAULT);
   const [search, setSearch] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(140);
 
@@ -194,7 +196,7 @@ export default function Index() {
   const qc = useQueryClient();
   const refresh = () => qc.invalidateQueries({ queryKey: ["calendar-events"] });
 
-  // Button styles matching 40th Ward aesthetic
+  // Button styles matching the Community Calendar aesthetic
   const btnBase: React.CSSProperties = {
     fontFamily: theme.fontBody,
     borderColor: theme.border,
@@ -440,6 +442,20 @@ export default function Index() {
               {theme.mode === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
+            <Divider />
+
+            {/* ── About — what this site does and which calendars feed it ── */}
+            <button
+              onClick={() => setAboutOpen(true)}
+              className="flex items-center justify-center rounded border"
+              style={{ ...btnBase, width: 40, height: 40 }}
+              onMouseEnter={onEnter} onMouseLeave={onLeave}
+              title="About this calendar"
+              aria-haspopup="dialog"
+            >
+              <Info size={16} />
+            </button>
+
             {/* ── Submit Your Event — pinned to the right margin of the control bar.
                 URL is editable from /admincat; blank hides the button. ── */}
             {submitEventUrl && (
@@ -462,7 +478,7 @@ export default function Index() {
               }}
               onMouseEnter={e => { e.currentTarget.style.opacity = "0.85"; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
-              title="Submit your event to the 40th Ward calendar"
+              title="Submit your event to the Community Calendar"
             >
               Submit Your Event
               <ExternalLink size={14} />
@@ -606,6 +622,8 @@ export default function Index() {
           </div>
         </footer>
       )}
+
+      {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} />}
 
     </div>
   );

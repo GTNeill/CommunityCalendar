@@ -3,7 +3,7 @@
 _Last synced with the live app: reflects the actual theme, categories, and components in production._
 
 ## Brand
-- App name: **40th Ward Community Events Calendar**
+- App name: **Community Calendar**
 - Audience: public-facing, ward residents
 - Vibe: matches 40thward.org — clean civic/editorial, light by default, dark mode available
 - Alderperson: Andre Vasquez
@@ -69,7 +69,7 @@ popup-border:  #2a6070
 Categories are fully editable at `/admincat` — this table reflects current data, not hardcoded design. See `ADMIN-GUIDE.md`.
 
 ## Typography
-- Display/Headers: `'Anton', 'Arial Black', sans-serif` — app title "40th Ward"
+- Display/Headers: `'Anton', 'Arial Black', sans-serif` — app title "Community Calendar"
 - Body/UI: `'Public Sans', 'Arial', sans-serif` — everything else
 - Monospace: used for category `key` fields in the admin page only
 - Scale: ~0.6rem micro-labels → 0.72–0.85rem body/meta → 1rem–1.85rem headings

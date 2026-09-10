@@ -101,12 +101,12 @@ Keywords actually support regex syntax, so you can get more precise if needed:
 
 | Pattern | Matches | Use case |
 |---|---|---|
-| `.*` | any characters | `40th ward.*budget` matches "40th Ward FY26 Budget Town Hall" |
+| `.*` | any characters | `community.*budget` matches "Community FY26 Budget Town Hall" |
 | `\b` | word boundary | `\bart\b` matches "Art Fair" but *not* "Smart Home Workshop" |
-| `(a\|b)` | either option | `ald(er)?.*vasquez` matches "Ald Vasquez" or "Alderman Vasquez" |
+| `(a\|b)` | either option | `ald(er)?.*person` matches "Ald Person" or "Alderperson" |
 | `.?` | optional single character | `e.?bike` matches "ebike" or "e-bike" or "e bike" |
 | `[0-9]` | any digit | `q[0-9]` matches "Q1", "Q2", etc. |
-| `^` | must start with | `^40th ward` only matches titles that *begin* with "40th Ward" |
+| `^` | must start with | `^community` only matches titles that *begin* with "Community" |
 
 You don't need to use regex — plain phrases work great for 90% of categories. Reach for regex only when:
 - A word has multiple common spellings/spacings (`e-bike` vs `ebike`)

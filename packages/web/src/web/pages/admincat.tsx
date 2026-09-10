@@ -125,8 +125,8 @@ function KeywordEditor({
           alignItems: "center",
           gap: "4px",
           padding: "2px 8px",
-          background: `${theme.teal}22`,
-          border: `1px solid ${theme.teal}66`,
+          background: `${theme.primary}22`,
+          border: `1px solid ${theme.primary}66`,
           borderRadius: "12px",
           fontSize: "11px",
           color: theme.textPrimary,
@@ -627,8 +627,8 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
             disabled={saving || !dirty}
             style={{
               padding: "7px 16px",
-              background: dirty ? theme.teal : `${theme.teal}33`,
-              border: `1px solid ${theme.teal}`,
+              background: dirty ? theme.primary : `${theme.primary}33`,
+              border: `1px solid ${theme.primary}`,
               borderRadius: "6px",
               color: dirty ? "#fff" : `${theme.textPrimary}66`,
               cursor: dirty ? "pointer" : "not-allowed",
@@ -825,8 +825,8 @@ function FeedSourcesPanel({ theme }: { theme: ReturnType<typeof useTheme>["theme
             disabled={saving || !dirty}
             style={{
               padding: "7px 16px",
-              background: dirty ? theme.teal : `${theme.teal}33`,
-              border: `1px solid ${theme.teal}`,
+              background: dirty ? theme.primary : `${theme.primary}33`,
+              border: `1px solid ${theme.primary}`,
               borderRadius: "6px",
               color: dirty ? "#fff" : `${theme.textPrimary}66`,
               cursor: dirty ? "pointer" : "not-allowed",
@@ -1132,10 +1132,10 @@ function AdminCatInner() {
             onClick={addNew}
             style={{
               padding: "8px 16px",
-              background: `${theme.teal}22`,
-              border: `1px solid ${theme.teal}66`,
+              background: `${theme.primary}22`,
+              border: `1px solid ${theme.primary}66`,
               borderRadius: "6px",
-              color: theme.teal,
+              color: theme.primary,
               cursor: "pointer",
               fontSize: "13px",
               fontWeight: 500,
@@ -1162,7 +1162,7 @@ function AdminCatInner() {
       {/* Tip bar */}
       <div style={{
         padding: "10px 32px",
-        background: `${theme.teal}11`,
+        background: `${theme.primary}11`,
         borderBottom: `1px solid ${theme.border}`,
         fontSize: "12px",
         color: theme.textMuted,

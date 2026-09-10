@@ -553,9 +553,9 @@ function CategoryFilterBar({
           display: "flex", alignItems: "center", gap: 5,
           padding: "4px 12px", borderRadius: 99, fontSize: "0.72rem", fontWeight: 700,
           cursor: "pointer",
-          border: `1.5px solid ${allSelected ? theme.teal : theme.border}`,
-          background: allSelected ? `${theme.teal}22` : "transparent",
-          color: allSelected ? readableOnTint(theme.teal, "22", theme.bg) : theme.textMuted,
+          border: `1.5px solid ${allSelected ? theme.primary : theme.border}`,
+          background: allSelected ? `${theme.primary}22` : "transparent",
+          color: allSelected ? readableOnTint(theme.primary, "22", theme.bg) : theme.textMuted,
           transition: "all 0.15s", outline: "none",
         }}
       >

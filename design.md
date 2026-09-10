@@ -4,46 +4,51 @@ _Last synced with the live app: reflects the actual theme, categories, and compo
 
 ## Brand
 - App name: **Community Calendar**
-- Audience: public-facing, ward residents
-- Vibe: matches 40thward.org — clean civic/editorial, light by default, dark mode available
+- Audience: public-facing, community residents
+- Vibe: matches thegreaterrockwell.org — clean civic/editorial, deep purple + lavender, light by default, dark mode available
 - Alderperson: Andre Vasquez
 
 ## Colors
 
-Two theme modes, toggled via the header sun/moon button (light is default).
+Two theme modes, toggled via the header sun/moon button (light is default). Palette matched from
+thegreaterrockwell.org (deep purple, lavender, near-black text, light gray, white). Red is kept as
+a small secondary accent only (top bar, footer bar, error/status states) — it isn't part of GRW's
+own palette, but wasn't removed.
 
 **Light mode**
 ```
-bg:            #fffbf4   (cream page background)
-bg-header:     #fffbf4f5 (translucent, blurred sticky header)
-surface:       #ffffff   (cards, panels, inputs)
-border:        #c8dde1
-text-primary:  #0b3e4a   (deep teal)
-text-muted:    #0b3e4a99
-text-faint:    #0b3e4a44
+bg:            #ffffff
+bg-header:     #fffffff5 (translucent, blurred sticky header)
+surface:       #f2f2f2   (cards, panels, inputs — GRW's own section gray)
+border:        #e2d8ea
+text-primary:  #262626
+text-muted:    #595959
+text-faint:    #767676
 accent (red):  #CF2C28   (top bar, badges, error states, save button)
-teal:          #147671   (active controls, tabs, links, primary actions)
-row-hover:     #f0fafb
-event-border:  #c8e4e8
+primary:       #3e1859   (GRW's own deep purple — active controls, tabs, links, primary actions)
+primary-text:  #3e1859   (same purple, safe as foreground text, ~13:1 on white)
+row-hover:     #f7f2fa
+event-border:  #e2d8ea
 popup-bg:      #ffffff
-popup-border:  #8ab8c0
+popup-border:  #c99fe8   (GRW's own lavender accent)
 ```
 
 **Dark mode**
 ```
-bg:            #0b2a33
-bg-header:     #0b2a33ee
-surface:       #0d3340
-border:        #1a4a58
-text-primary:  #fffbf4
-text-muted:    #8ab8c0
-text-faint:    #2a5060
+bg:            #1a0f22
+bg-header:     #1a0f22ee
+surface:       #241531
+border:        #3d2650
+text-primary:  #f3edf7
+text-muted:    #c3b0d6
+text-faint:    #a68fc0
 accent (red):  #CF2C28   (same red across both modes)
-teal:          #147671   (same teal across both modes)
-row-hover:     #0f3d4d
-event-border:  #1c4a5a
-popup-bg:      #0a2530
-popup-border:  #2a6070
+primary:       #8a5cc4   (brighter than GRW's own #3e1859 so it reads on a dark bg, fill only)
+primary-text:  #c99fe8   (GRW's own lavender, safe as foreground on dark bg)
+row-hover:     #2a1a38
+event-border:  #3d2650
+popup-bg:      #1f1329
+popup-border:  #4a2f63
 ```
 
 ## Category Colors (current 15 categories, in display order)
@@ -69,8 +74,8 @@ popup-border:  #2a6070
 Categories are fully editable at `/admincat` — this table reflects current data, not hardcoded design. See `ADMIN-GUIDE.md`.
 
 ## Typography
-- Display/Headers: `'Anton', 'Arial Black', sans-serif` — app title "Community Calendar"
-- Body/UI: `'Public Sans', 'Arial', sans-serif` — everything else
+- Display/Headers: `'Work Sans', 'Arial', sans-serif`, weight 700 — app title "Community Calendar", month/year label, modal headings
+- Body/UI: `'Work Sans', 'Arial', sans-serif` — everything else
 - Monospace: used for category `key` fields in the admin page only
 - Scale: ~0.6rem micro-labels → 0.72–0.85rem body/meta → 1rem–1.85rem headings
 

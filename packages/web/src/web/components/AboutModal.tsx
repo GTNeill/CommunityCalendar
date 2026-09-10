@@ -74,7 +74,7 @@ export default function AboutModal({ onClose }: { onClose: () => void }) {
             : "0 0 0 1px rgba(0,0,0,0.08), 0 12px 48px rgba(0,0,0,0.22)",
         }}
       >
-        <div style={{ height: 6, background: theme.teal }} />
+        <div style={{ height: 6, background: theme.primary }} />
 
         <div style={{ padding: "20px 24px 24px" }}>
           <div className="flex items-start justify-between" style={{ marginBottom: 12 }}>
@@ -82,6 +82,7 @@ export default function AboutModal({ onClose }: { onClose: () => void }) {
               id="about-modal-title"
               style={{
                 fontFamily: theme.fontDisplay,
+                fontWeight: 700,
                 fontSize: "1.35rem",
                 color: theme.textPrimary,
                 letterSpacing: "0.01em",
@@ -187,7 +188,7 @@ export default function AboutModal({ onClose }: { onClose: () => void }) {
                         fontFamily: theme.fontBody,
                         fontSize: "0.78rem",
                         fontWeight: 600,
-                        color: theme.tealText,
+                        color: theme.primaryText,
                         textDecoration: "none",
                       }}
                     >
@@ -232,7 +233,7 @@ export default function AboutModal({ onClose }: { onClose: () => void }) {
                 style={{
                   gap: 4,
                   fontWeight: 600,
-                  color: theme.tealText,
+                  color: theme.primaryText,
                   textDecoration: "none",
                 }}
               >

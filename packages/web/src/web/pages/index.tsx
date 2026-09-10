@@ -88,7 +88,7 @@ function ZoomSlider({
           WebkitAppearance: "slider-vertical" as any,
           width: 20,
           height: 110,
-          accentColor: theme.teal,
+          accentColor: theme.primary,
           cursor: "pointer",
           background: "transparent",
         }}
@@ -204,8 +204,8 @@ export default function Index() {
     transition: "border-color 0.15s, color 0.15s, background 0.15s",
   };
   const onEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.borderColor = theme.teal;
-    e.currentTarget.style.color = theme.teal;
+    e.currentTarget.style.borderColor = theme.primary;
+    e.currentTarget.style.color = theme.primary;
   };
   const onLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.currentTarget.style.borderColor = theme.border;
@@ -236,13 +236,13 @@ export default function Index() {
       <a
         href="#main-content"
         className="skip-link"
-        style={{ background: theme.teal, color: "#ffffff" }}
+        style={{ background: theme.primary, color: "#ffffff" }}
       >
         Skip to events
       </a>
 
       {/* ── Top accent bar ── */}
-      {!isEmbed && <div style={{ height: 4, background: theme.teal }} />}
+      {!isEmbed && <div style={{ height: 4, background: theme.primary }} />}
 
       {/* ── Header ── */}
       <header
@@ -265,6 +265,7 @@ export default function Index() {
                   style={{
                     fontFamily: theme.fontDisplay,
                     fontSize: "1.85rem",
+                    fontWeight: 700,
                     color: theme.textPrimary,
                     letterSpacing: "0.02em",
                   }}
@@ -322,7 +323,7 @@ export default function Index() {
                     fontWeight: 700,
                     textTransform: "none",
                     letterSpacing: "0.08em",
-                    background: unit === u ? theme.teal : "transparent",
+                    background: unit === u ? theme.primary : "transparent",
                     color: unit === u ? "#ffffff" : theme.textPrimary,
                     borderRight: u === "week" ? `1px solid ${theme.border}` : undefined,
                     transition: "background 0.15s, color 0.15s",
@@ -400,7 +401,7 @@ export default function Index() {
                     fontWeight: 700,
                     textTransform: "none",
                     letterSpacing: "0.08em",
-                    background: tab === id ? theme.teal : "transparent",
+                    background: tab === id ? theme.primary : "transparent",
                     color: tab === id ? "#ffffff" : theme.textPrimary,
                     borderRight: id === "cards" ? `1px solid ${theme.border}` : undefined,
                     transition: "background 0.15s, color 0.15s",
@@ -471,7 +472,7 @@ export default function Index() {
                 padding: "9px 18px",
                 fontSize: "0.85rem",
                 letterSpacing: "0.02em",
-                background: theme.teal,
+                background: theme.primary,
                 color: "#ffffff",
                 textDecoration: "none",
                 transition: "background 0.15s",
@@ -535,7 +536,7 @@ export default function Index() {
               gap: 10,
               padding: "10px 14px",
               borderRadius: 10,
-              border: `1.5px solid ${search ? theme.teal : theme.border}`,
+              border: `1.5px solid ${search ? theme.primary : theme.border}`,
               background: theme.surface,
               transition: "border-color 0.15s",
               maxWidth: 420,
@@ -596,7 +597,7 @@ export default function Index() {
           className="mt-12 py-8"
           style={{
             background: theme.mode === "dark" ? "#051820" : "#0b3e4a",
-            borderTop: `4px solid ${theme.teal}`,
+            borderTop: `4px solid ${theme.primary}`,
           }}
         >
           <div style={{ maxWidth: 1152, margin: "0 auto", padding: isMobile ? "0 16px" : "0 48px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>

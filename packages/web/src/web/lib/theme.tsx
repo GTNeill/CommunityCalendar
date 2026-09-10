@@ -11,16 +11,16 @@ export interface Theme {
   textPrimary: string;
   textMuted: string;
   textFaint: string;
-  accent: string;       // red — top bar, footer bar only (used as a FILL)
+  accent: string;       // red — kept as a small secondary accent (top bar, footer bar)
   accentDark: string;
-  teal: string;         // teal — active UI controls (used as a FILL)
+  primary: string;      // deep purple — active UI controls (used as a FILL)
   // ── Text-safe variants ──────────────────────────────────────────────────
-  // `accent`/`teal` are tuned as background fills with white text on top
+  // `accent`/`primary` are tuned as background fills with white text on top
   // (both clear 5:1 that way). Painted as TEXT on the page background they
-  // fall to ~2.8:1 in dark mode, failing WCAG 1.4.3. Use these whenever the
-  // brand colour is the foreground.
+  // can fall below 4.5:1 in dark mode, failing WCAG 1.4.3. Use these
+  // whenever the brand colour is the foreground.
   accentText: string;
-  tealText: string;
+  primaryText: string;
   focusRing: string;    // visible keyboard focus indicator (WCAG 2.4.7)
   rowHover: string;
   eventBorder: string;
@@ -30,54 +30,56 @@ export interface Theme {
   fontBody: string;
 }
 
-// Community Calendar brand palette:
-// Deep teal #0b3e4a, teal #147671, light teal #5bb5b1, cream #fffbf4
-// Red/orange accent #CF2C28, secondary #ca482b, text #333333
+// Greater Rockwell Organization brand palette (matched from thegreaterrockwell.org):
+// Deep purple #3e1859, lavender #c99fe8, near-black text #333333, light
+// gray #f2f2f2, white. Red #CF2C28 kept as a small secondary accent only
+// (top bar, footer bar) — not part of GRW's palette, but not asked to remove.
+// Font: Work Sans everywhere, no separate display face.
 
 const DARK: Theme = {
   mode: "dark",
-  bg: "#0b2a33",
-  bgHeader: "#0b2a33ee",
-  surface: "#0d3340",
-  border: "#1a4a58",
-  textPrimary: "#fffbf4",
-  textMuted: "#8ab8c0",    // 6.96:1 on bg — do NOT stack extra opacity on this
-  textFaint: "#7aa8b0",    // was #2a5060 (~1.5:1, unreadable); now 5.78:1
+  bg: "#1a0f22",
+  bgHeader: "#1a0f22ee",
+  surface: "#241531",
+  border: "#3d2650",
+  textPrimary: "#f3edf7",
+  textMuted: "#c3b0d6",    // ~8.3:1 on bg
+  textFaint: "#a68fc0",    // ~5.4:1 on bg
   accent: "#CF2C28",
   accentDark: "#a01e1b",
-  teal: "#147671",         // Community Calendar teal — active controls (fill only)
+  primary: "#8a5cc4",       // brighter than GRW's own #3e1859 so it reads on a dark bg (fill only)
   accentText: "#f0736e",   // #CF2C28 is only 2.9:1 on dark bg; this is 5.3:1
-  tealText: "#5bb5b1",     // #147671 is only 2.77:1 on dark bg; this is 6.24:1
-  focusRing: "#7fd0cb",
-  rowHover: "#0f3d4d",
-  eventBorder: "#1c4a5a",
-  popupBg: "#0a2530",
-  popupBorder: "#2a6070",
-  fontDisplay: "'Anton', 'Arial Black', sans-serif",
-  fontBody: "'Public Sans', 'Arial', sans-serif",
+  primaryText: "#c99fe8",  // GRW's own lavender accent — safe as foreground on dark bg
+  focusRing: "#c99fe8",
+  rowHover: "#2a1a38",
+  eventBorder: "#3d2650",
+  popupBg: "#1f1329",
+  popupBorder: "#4a2f63",
+  fontDisplay: "'Work Sans', 'Arial', sans-serif",
+  fontBody: "'Work Sans', 'Arial', sans-serif",
 };
 
 const LIGHT: Theme = {
   mode: "light",
-  bg: "#fffbf4",
-  bgHeader: "#fffbf4f5",
-  surface: "#ffffff",
-  border: "#c8dde1",
-  textPrimary: "#0b3e4a",
-  textMuted: "#4d7178",    // was #0b3e4a99 (3.59:1); solid now, 5.16:1 on cream
-  textFaint: "#54777d",    // was #0b3e4a44 (~1.9:1, unreadable); now 4.72:1
+  bg: "#ffffff",
+  bgHeader: "#fffffff5",
+  surface: "#f2f2f2",       // GRW's own section background
+  border: "#e2d8ea",
+  textPrimary: "#262626",
+  textMuted: "#595959",     // ~7:1 on white
+  textFaint: "#767676",     // ~4.5:1 on white
   accent: "#CF2C28",
   accentDark: "#a01e1b",
-  teal: "#147671",         // Community Calendar teal — active controls (fill only)
-  accentText: "#CF2C28",   // 5.03:1 on cream — already safe as foreground
-  tealText: "#147671",     // 5.27:1 on cream — already safe as foreground
-  focusRing: "#0f5d59",
-  rowHover: "#f0fafb",
-  eventBorder: "#c8e4e8",
+  primary: "#3e1859",       // GRW's own deep purple — active controls (fill only)
+  accentText: "#CF2C28",    // already safe as foreground on white
+  primaryText: "#3e1859",   // ~13:1 on white — safe as foreground too
+  focusRing: "#6a2f95",
+  rowHover: "#f7f2fa",
+  eventBorder: "#e2d8ea",
   popupBg: "#ffffff",
-  popupBorder: "#8ab8c0",
-  fontDisplay: "'Anton', 'Arial Black', sans-serif",
-  fontBody: "'Public Sans', 'Arial', sans-serif",
+  popupBorder: "#c99fe8",   // GRW's own lavender accent
+  fontDisplay: "'Work Sans', 'Arial', sans-serif",
+  fontBody: "'Work Sans', 'Arial', sans-serif",
 };
 
 const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({

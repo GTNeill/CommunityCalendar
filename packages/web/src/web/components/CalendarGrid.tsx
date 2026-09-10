@@ -686,6 +686,7 @@ export default function CalendarGrid({ events, start, end, unit }: Props) {
             padding: "14px 0",
             textAlign: "center",
             fontFamily: theme.fontDisplay,
+            fontWeight: 700,
             fontSize: "1.4rem",
             letterSpacing: "0.02em",
             color: theme.textPrimary,

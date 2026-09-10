@@ -7,6 +7,7 @@ export interface SiteSettings {
   footerLinkText: string;
   footerLinkUrl: string;
   submitEventUrl: string;
+  contactEmail: string;
 }
 
 async function fetchSettings(): Promise<SiteSettings> {

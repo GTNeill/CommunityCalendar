@@ -1,13 +1,16 @@
 import { useEffect, useRef } from "react";
-import { X, ExternalLink } from "lucide-react";
+import { X, ExternalLink, Mail } from "lucide-react";
 import { useTheme } from "../lib/theme";
 import { useSources } from "../hooks/useSources";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useSiteSettings } from "../hooks/useSiteSettings";
 
 export default function AboutModal({ onClose }: { onClose: () => void }) {
   const { theme } = useTheme();
   const isMobile = useIsMobile();
   const { data: sources, isLoading, isError } = useSources();
+  const { data: siteSettings } = useSiteSettings();
+  const contactEmail = siteSettings?.contactEmail;
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Esc to close, and keep focus trapped in the dialog while it's open.
@@ -210,6 +213,34 @@ export default function AboutModal({ onClose }: { onClose: () => void }) {
             Reach out to the organization that posted it — the source list
             above is the fastest way to find who to contact.
           </p>
+
+          {contactEmail && (
+            <p
+              style={{
+                fontFamily: theme.fontBody,
+                fontSize: "0.78rem",
+                lineHeight: 1.5,
+                color: theme.textMuted,
+                margin: "8px 0 0",
+              }}
+            >
+              Questions about the site itself, or want your organization's
+              calendar added?{" "}
+              <a
+                href={`mailto:${contactEmail}`}
+                className="inline-flex items-center"
+                style={{
+                  gap: 4,
+                  fontWeight: 600,
+                  color: theme.tealText,
+                  textDecoration: "none",
+                }}
+              >
+                <Mail size={12} />
+                {contactEmail}
+              </a>
+            </p>
+          )}
         </div>
       </div>
     </div>

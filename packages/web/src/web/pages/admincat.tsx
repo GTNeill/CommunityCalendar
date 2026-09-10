@@ -516,9 +516,11 @@ function CategoryRow({
 interface SiteSettings {
   headerTitle: string;
   headerSubtitle: string;
+  footerText: string;
   footerLinkText: string;
   footerLinkUrl: string;
   submitEventUrl: string;
+  contactEmail: string;
 }
 
 const SETTINGS_FIELD_STYLE: React.CSSProperties = {
@@ -673,6 +675,12 @@ function SiteSettingsPanel({ theme }: { theme: ReturnType<typeof useTheme>["them
             Submit Your Event URL <span style={{ opacity: 0.7 }}>(leave blank to hide the button)</span>
           </label>
           {field("submitEventUrl")}
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label htmlFor="setting-contactEmail" style={{ display: "block", fontSize: "11px", color: theme.textMuted, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Contact Email <span style={{ opacity: 0.7 }}>(shown in the About popup, leave blank to hide it)</span>
+          </label>
+          {field("contactEmail")}
         </div>
       </div>
     </div>

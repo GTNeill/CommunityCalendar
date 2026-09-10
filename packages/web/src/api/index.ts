@@ -54,6 +54,8 @@ export interface SiteSettings {
   footerLinkUrl: string;
   /** Target of the "Submit Your Event" button. Blank hides the button. */
   submitEventUrl: string;
+  /** Shown in the About popup for tech questions or requests to add a calendar. Blank hides it. */
+  contactEmail: string;
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
@@ -67,6 +69,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   // Preserves the URL that used to be hardcoded in the header, so existing
   // deploys keep the same button until someone changes it from /admincat.
   submitEventUrl: "https://airtable.com/appDK75qZXFYekjMt/pag5fZSZB51xIq4vi/form",
+  contactEmail: "help@gneill.net",
 };
 
 let runtimeSettings: SiteSettings = DEFAULT_SETTINGS;
@@ -733,6 +736,8 @@ const app = new Hono()
         // Empty is a meaningful value here (it hides the button), so this
         // must not fall back to the default the way the header fields do.
         submitEventUrl: typeof body.submitEventUrl === "string" ? body.submitEventUrl : "",
+        // Empty hides the contact line in the About popup, same reasoning.
+        contactEmail: typeof body.contactEmail === "string" ? body.contactEmail : "",
       };
       saveSettings(next);
       runtimeSettings = loadSettings();

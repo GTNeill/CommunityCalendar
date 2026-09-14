@@ -26,7 +26,7 @@ export interface CalEvent {
 // to silently drift out of sync every time a category was added, renamed,
 // reordered, or moved between groups via /admincat.
 
-export type RangeUnit = "week" | "month";
+export type RangeUnit = "day" | "week" | "month";
 
 export function parseLocalDate(str: string): Date {
   if (!str) return new Date();
@@ -90,7 +90,12 @@ export function todayMidnight(): Date {
 export function getRollingRange(unit: RangeUnit, offset: number): { start: Date; end: Date } {
   const today = todayMidnight();
   const start = new Date(today);
-  if (unit === "week") {
+  if (unit === "day") {
+    start.setDate(today.getDate() + offset);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  } else if (unit === "week") {
     start.setDate(today.getDate() + offset * 7);
     const end = new Date(start);
     end.setDate(start.getDate() + 7);
@@ -112,7 +117,13 @@ export function getRollingRange(unit: RangeUnit, offset: number): { start: Date;
 export function getRange(unit: RangeUnit, offset: number): { start: Date; end: Date } {
   const today = todayMidnight();
 
-  if (unit === "week") {
+  if (unit === "day") {
+    const start = new Date(today);
+    start.setDate(today.getDate() + offset);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  } else if (unit === "week") {
     // Anchor to this week's Sunday, then shift by offset weeks
     const sunday = new Date(today);
     sunday.setDate(today.getDate() - today.getDay() + offset * 7);
@@ -132,6 +143,10 @@ export function getRange(unit: RangeUnit, offset: number): { start: Date; end: D
 
 /** Format a range label: week shows "Jun 29 – Jul 5, 2026"; month shows "July 2026" */
 export function fmtRangeLabel(start: Date, end: Date): string {
+  // Same calendar day — the Today/day view
+  if (start.toDateString() === end.toDateString()) {
+    return start.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
   // If same month+year, it's a calendar month view
   if (start.getDate() === 1 && end.getDate() === new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate()) {
     return start.toLocaleString("en-US", { month: "long", year: "numeric" });

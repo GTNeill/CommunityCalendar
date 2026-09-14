@@ -305,17 +305,20 @@ export default function Index() {
           {/* Row 3: Controls — wraps onto multiple lines instead of overflowing/scrolling */}
           <div className="flex items-center flex-wrap pb-3" style={{ gap: "10px", rowGap: "8px" }}>
 
-            {/* ── Week / Month toggle ── */}
+            {/* ── Today / Week / Month toggle ── */}
             <div
               className="flex rounded overflow-hidden border"
               style={{ borderColor: theme.border }}
             >
-              {(["week", "month"] as RangeUnit[]).map(u => (
+              {(["day", "week", "month"] as RangeUnit[]).map(u => (
                 <button
                   key={u}
                   onClick={() => { setUnit(u); setOffset(0); }}
                   aria-pressed={unit === u}
-                  title={u === "week" ? "Show one week at a time" : "Show one month at a time"}
+                  title={
+                    u === "day" ? "Show only today's events" :
+                    u === "week" ? "Show one week at a time" : "Show one month at a time"
+                  }
                   style={{
                     fontFamily: theme.fontBody,
                     padding: "9px 20px",
@@ -325,13 +328,13 @@ export default function Index() {
                     letterSpacing: "0.08em",
                     background: unit === u ? theme.primary : "transparent",
                     color: unit === u ? "#ffffff" : theme.textPrimary,
-                    borderRight: u === "week" ? `1px solid ${theme.border}` : undefined,
+                    borderRight: u !== "month" ? `1px solid ${theme.border}` : undefined,
                     transition: "background 0.15s, color 0.15s",
                     cursor: "pointer",
                     border: "none",
                   }}
                 >
-                  {u.charAt(0).toUpperCase() + u.slice(1)}
+                  {u === "day" ? "Today" : u.charAt(0).toUpperCase() + u.slice(1)}
                 </button>
               ))}
             </div>
@@ -345,7 +348,7 @@ export default function Index() {
                 className="flex items-center justify-center rounded border"
                 style={{ ...btnBase, width: 40, height: 40 }}
                 onMouseEnter={onEnter} onMouseLeave={onLeave}
-                title={unit === "week" ? "Previous week" : "Previous month"}
+                title={unit === "day" ? "Previous day" : unit === "week" ? "Previous week" : "Previous month"}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -361,7 +364,7 @@ export default function Index() {
                   fontSize: "0.8rem",
                 }}
                 onMouseEnter={onEnter} onMouseLeave={onLeave}
-                title="Jump back to today"
+                title={unit === "day" ? "Jump back to today" : "Jump back to the current period"}
               >
                 Today
               </button>
@@ -370,7 +373,7 @@ export default function Index() {
                 className="flex items-center justify-center rounded border"
                 style={{ ...btnBase, width: 40, height: 40 }}
                 onMouseEnter={onEnter} onMouseLeave={onLeave}
-                title={unit === "week" ? "Next week" : "Next month"}
+                title={unit === "day" ? "Next day" : unit === "week" ? "Next week" : "Next month"}
               >
                 <ChevronRight size={16} />
               </button>

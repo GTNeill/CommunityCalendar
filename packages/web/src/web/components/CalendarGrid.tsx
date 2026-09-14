@@ -12,7 +12,7 @@ import { useCategories } from "../hooks/useCategories";
 import CategoryIcon from "./CategoryIcon";
 import FilterTip from "./FilterTip";
 
-type RangeUnit = "week" | "month";
+type RangeUnit = "day" | "week" | "month";
 
 interface Props {
   events: CalEvent[];
@@ -409,6 +409,66 @@ function DayCell({
   );
 }
 
+/* ─── Day View (used by the Today filter) ───────────────────── */
+function DayView({ events, start }: { events: CalEvent[]; start: Date }) {
+  const { theme } = useTheme();
+  const isToday = start.toDateString() === new Date().toDateString();
+  const dayEvs = events.filter(ev => isSameDay(ev.start, start));
+  const sorted = [...dayEvs].sort((a, b) => {
+    if (a.isAllDay && !b.isAllDay) return -1;
+    if (!a.isAllDay && b.isAllDay) return 1;
+    return parseLocalDate(a.start).getTime() - parseLocalDate(b.start).getTime();
+  });
+
+  return (
+    <div>
+      {/* Day header — mirrors WeekView's per-day header, full width */}
+      <div
+        style={{
+          padding: "14px 0",
+          textAlign: "center",
+          borderBottom: `1px solid ${theme.border}`,
+          background: isToday
+            ? theme.mode === "dark" ? "#1a130a" : "#FFF7EC"
+            : "transparent",
+        }}
+      >
+        <div style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: theme.textPrimary, opacity: isToday ? 1 : 0.7 }}>
+          {DOW[start.getDay()]}
+        </div>
+        <div
+          style={{
+            margin: "6px auto 0",
+            width: 34,
+            height: 34,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "1.1rem",
+            fontWeight: isToday ? 800 : 600,
+            background: isToday ? theme.accent : "transparent",
+            color: isToday ? onSolid(theme.accent) : theme.textPrimary,
+          }}
+        >
+          {start.getDate()}
+        </div>
+      </div>
+
+      {/* Agenda list for the day */}
+      <div style={{ padding: "14px" }}>
+        {sorted.length === 0 ? (
+          <p style={{ textAlign: "center", padding: "24px 0", fontSize: "0.85rem", color: theme.textMuted, fontFamily: theme.fontBody }}>
+            No events scheduled for this day.
+          </p>
+        ) : (
+          sorted.map(ev => <EventChip key={ev.id} ev={ev} />)
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Week View ──────────────────────────────────────────────── */
 function WeekView({ events, start }: { events: CalEvent[]; start: Date }) {
   const { theme } = useTheme();
@@ -669,7 +729,9 @@ export default function CalendarGrid({ events, start, end, unit }: Props) {
   // different months (or years), show both instead of picking one arbitrarily.
   const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
   const sameYear = start.getFullYear() === end.getFullYear();
-  const monthYearLabel = sameMonth
+  const monthYearLabel = unit === "day"
+    ? start.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+    : sameMonth
     ? start.toLocaleString("en-US", { month: "long", year: "numeric" })
     : sameYear
     ? `${start.toLocaleString("en-US", { month: "long" })} – ${end.toLocaleString("en-US", { month: "long", year: "numeric" })}`
@@ -694,7 +756,9 @@ export default function CalendarGrid({ events, start, end, unit }: Props) {
         >
           {monthYearLabel}
         </div>
-        {unit === "week"
+        {unit === "day"
+          ? <DayView events={filtered} start={start} />
+          : unit === "week"
           ? <WeekView events={filtered} start={start} />
           : <MonthView events={filtered} start={start} />}
       </div>

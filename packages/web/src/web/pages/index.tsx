@@ -256,9 +256,11 @@ export default function Index() {
       >
         <div style={{ maxWidth: 1152, margin: "0 auto", padding: isMobile ? "0 16px" : "0 48px" }}>
 
-          {/* Row 1: Logo area — branding, excluded from embed mode */}
+          {/* Row 1: Logo area + range label — excluded from embed mode.
+              The range label sits right-justified on the title line so the
+              selected date range reads as prominently as the site title. */}
           {!isEmbed && (
-            <div className="flex items-end pt-5 pb-2">
+            <div className="flex items-end justify-between pt-5 pb-2" style={{ gap: 16 }}>
               <div>
                 <h1
                   className="leading-none"
@@ -285,22 +287,35 @@ export default function Index() {
                   {headerSubtitle}
                 </p>
               </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <p className="text-sm font-semibold" style={{ color: theme.textPrimary, fontFamily: theme.fontBody }}>
+                  {rangeLabel}
+                </p>
+                {dataUpdatedAt > 0 && (
+                  // role="status" announces background refreshes to screen readers (WCAG 4.1.3).
+                  // The opacity that used to sit here dropped this text to 2.01:1 — removed for 1.4.3.
+                  <span className="text-xs" role="status" aria-live="polite" style={{ color: theme.textMuted }}>
+                    Updated {timeSince(new Date(dataUpdatedAt).toISOString())}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Row 2: Range label — its own line so it never gets squashed by controls */}
-          <div className="pb-2" style={isEmbed ? { paddingTop: 16 } : undefined}>
-            <p className="text-sm font-semibold" style={{ color: theme.textPrimary, fontFamily: theme.fontBody }}>
-              {rangeLabel}
-            </p>
-            {dataUpdatedAt > 0 && (
-              // role="status" announces background refreshes to screen readers (WCAG 4.1.3).
-              // The opacity that used to sit here dropped this text to 2.01:1 — removed for 1.4.3.
-              <span className="text-xs" role="status" aria-live="polite" style={{ color: theme.textMuted }}>
-                Updated {timeSince(new Date(dataUpdatedAt).toISOString())}
-              </span>
-            )}
-          </div>
+          {/* Embed mode has no title row to anchor the range label to, so it
+              keeps its own line here instead. */}
+          {isEmbed && (
+            <div className="pb-2" style={{ paddingTop: 16 }}>
+              <p className="text-sm font-semibold" style={{ color: theme.textPrimary, fontFamily: theme.fontBody }}>
+                {rangeLabel}
+              </p>
+              {dataUpdatedAt > 0 && (
+                <span className="text-xs" role="status" aria-live="polite" style={{ color: theme.textMuted }}>
+                  Updated {timeSince(new Date(dataUpdatedAt).toISOString())}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Row 3: Controls — wraps onto multiple lines instead of overflowing/scrolling */}
           <div className="flex items-center flex-wrap pb-3" style={{ gap: "10px", rowGap: "8px" }}>

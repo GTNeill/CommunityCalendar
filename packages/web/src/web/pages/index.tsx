@@ -261,7 +261,7 @@ export default function Index() {
               at ~60% of the title's size, so the selected range reads at a
               glance without competing with the title for attention. */}
           {!isEmbed && (
-            <div className="pt-5 pb-2">
+            <div className="pb-2" style={{ paddingTop: isMobile ? 24 : 40 }}>
               <div className="flex items-baseline justify-between" style={{ gap: isMobile ? 10 : 16, flexWrap: "nowrap" }}>
                 <h1
                   className="leading-none"

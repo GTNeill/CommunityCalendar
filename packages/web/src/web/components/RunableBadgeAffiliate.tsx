@@ -3,12 +3,13 @@ import { useState } from "react";
 /**
  * Local replacement for @runablehq/website-runtime's RunableBadge.
  * Visually identical, but points to the site owner's Runable affiliate
- * link instead of the default https://runable.com. The upstream package's
+ * link instead of the default https://runable.link. The upstream package's
  * badge has no prop to override its href, so this is a faithful copy with
  * only the link swapped.
  */
 
-const RUNABLE_HREF = "https://runable.com/?via=40th";
+const RUNABLE_REFERRAL_CODE = import.meta.env.VITE_RUNABLE_REFERRAL_CODE || "grocal";
+const RUNABLE_HREF = `https://runable.link/?via=${RUNABLE_REFERRAL_CODE}`;
 
 function RunableIcon({ size = 16 }: { size?: number }) {
   return (
@@ -62,7 +63,8 @@ export default function RunableBadgeAffiliate() {
         overflow: "hidden",
         transform: hovered ? "translateY(-1px)" : "translateY(0px)",
         boxShadow: hovered ? "0 4px 20px rgba(0, 170, 255, 0.25)" : "none",
-        transition: "transform 0.18s ease, box-shadow 0.18s ease",
+        opacity: hovered ? 1 : 0.5,
+        transition: "transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease",
       }}
     >
       <div

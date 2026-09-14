@@ -257,25 +257,48 @@ export default function Index() {
         <div style={{ maxWidth: 1152, margin: "0 auto", padding: isMobile ? "0 16px" : "0 48px" }}>
 
           {/* Row 1: Logo area + range label — excluded from embed mode.
-              The range label sits right-justified on the title line so the
-              selected date range reads as prominently as the site title. */}
+              The date sits on the same line as the page title, right-justified,
+              at ~60% of the title's size, so the selected range reads at a
+              glance without competing with the title for attention. */}
           {!isEmbed && (
-            <div className="flex items-end justify-between pt-5 pb-2" style={{ gap: 16 }}>
-              <div>
+            <div className="pt-5 pb-2">
+              <div className="flex items-baseline justify-between" style={{ gap: isMobile ? 10 : 16, flexWrap: "nowrap" }}>
                 <h1
                   className="leading-none"
                   style={{
                     fontFamily: theme.fontDisplay,
-                    fontSize: "1.85rem",
+                    fontSize: isMobile ? "1.3rem" : "1.85rem",
                     fontWeight: 700,
                     color: theme.textPrimary,
                     letterSpacing: "0.02em",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    minWidth: 0,
                   }}
                 >
                   {headerTitle}
                 </h1>
                 <p
-                  className="mt-0.5"
+                  className="leading-none"
+                  style={{
+                    fontFamily: theme.fontBody,
+                    // Always ~60% of the title's current size, so the
+                    // relationship holds at both the desktop and mobile
+                    // title sizes above.
+                    fontSize: isMobile ? "0.78rem" : "1.11rem",
+                    fontWeight: 600,
+                    color: theme.textPrimary,
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
+                    textAlign: "right",
+                  }}
+                >
+                  {rangeLabel}
+                </p>
+              </div>
+              <div className="flex items-baseline justify-between mt-0.5" style={{ gap: 16 }}>
+                <p
                   style={{
                     fontFamily: theme.fontBody,
                     fontSize: "0.75rem",
@@ -286,15 +309,10 @@ export default function Index() {
                 >
                   {headerSubtitle}
                 </p>
-              </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <p className="text-sm font-semibold" style={{ color: theme.textPrimary, fontFamily: theme.fontBody }}>
-                  {rangeLabel}
-                </p>
                 {dataUpdatedAt > 0 && (
                   // role="status" announces background refreshes to screen readers (WCAG 4.1.3).
                   // The opacity that used to sit here dropped this text to 2.01:1 — removed for 1.4.3.
-                  <span className="text-xs" role="status" aria-live="polite" style={{ color: theme.textMuted }}>
+                  <span className="text-xs" role="status" aria-live="polite" style={{ color: theme.textMuted, flexShrink: 0 }}>
                     Updated {timeSince(new Date(dataUpdatedAt).toISOString())}
                   </span>
                 )}

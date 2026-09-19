@@ -13,6 +13,7 @@ import {
   DEFAULT_FEEDS, parseIcsFeeds, parseSquarespaceFeeds, parseRssFeeds, validateFeeds,
   type FeedSettings,
 } from "./lib/feeds";
+import { FARMERS_MARKET_ICS, FARMERS_MARKET_FEED_NAME, FARMERS_MARKET_PAGE_URL } from "./lib/farmersMarket";
 
 // ── Calendar sources ─────────────────────────────────────────────────────────
 // Which calendars are read is configured at runtime and editable from
@@ -500,6 +501,23 @@ async function fetchICalEvents(
     }
   });
 
+  // Farmers markets: a fixed, hand-checked .ics (see lib/farmersMarket.ts)
+  // rather than a feed, since DCASE publishes no exportable schedule. Runs
+  // through the same parseICS() as a network feed, just with no fetch to
+  // fail, so a try/catch is enough to keep it from ever affecting the rest
+  // of the calendar; ranked last since nothing else lists these events.
+  try {
+    const fmRank = icsFeeds.length + squarespaceFeeds.length + rssFeeds.length;
+    const fmEvents = parseICS(FARMERS_MARKET_ICS, FARMERS_MARKET_FEED_NAME, "", timeMin, timeMax);
+    for (const ev of fmEvents) {
+      ev._rank = fmRank;
+      allEvents.push(ev);
+    }
+    console.log(`[farmers-market] ${fmEvents.length} event(s) in window`);
+  } catch (e: any) {
+    console.error("[farmers-market] failed to parse static schedule, skipping:", e.message);
+  }
+
   // Overlapping service areas mean the same real-world event is often
   // published by several of these orgs, each with its own UID. See
   // lib/dedupe.ts for why this is exact-title + time/place gated rather than
@@ -649,6 +667,8 @@ const app = new Hono()
     for (const { name, pageUrl, url } of parseRssFeeds(runtimeFeeds.rss)) {
       sources.push({ name, link: pageUrl || originOf(url) });
     }
+    // Static, not a configurable feed — see lib/farmersMarket.ts.
+    sources.push({ name: FARMERS_MARKET_FEED_NAME, link: FARMERS_MARKET_PAGE_URL });
     return c.json({ sources }, 200);
   })
 

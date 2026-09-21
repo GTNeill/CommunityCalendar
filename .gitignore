@@ -76,3 +76,4 @@ packages/mobile/scripts/*
 
 # Uploaded category icons (live on the persistent volume, not in git)
 packages/web/data/icons/
+packages/web/data/.auth-secret

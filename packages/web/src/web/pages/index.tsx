@@ -257,11 +257,11 @@ export default function Index() {
         <div style={{ maxWidth: 1152, margin: "0 auto", padding: isMobile ? "0 16px" : "0 48px" }}>
 
           {/* Row 1: Logo area + range label — excluded from embed mode.
-              Doubled from the original ~60%-of-title size per request, so
-              the date now reads bigger than the title. On desktop there's
-              room for both on one line, right-justified; on mobile the date
-              at this size no longer fits beside the title without crushing
-              it into an ellipsis, so it drops to its own line below instead. */}
+              The date matches the title's size and sits beside it,
+              right-justified, on desktop. On mobile the combined width of
+              a full-size title + full-size date doesn't fit one line, so
+              the date drops to its own line below instead of truncating
+              the title. */}
           {!isEmbed && (
             <div className="pb-2" style={{ paddingTop: isMobile ? 24 : 40 }}>
               <div
@@ -288,7 +288,8 @@ export default function Index() {
                   className="leading-none"
                   style={{
                     fontFamily: theme.fontBody,
-                    fontSize: isMobile ? "1.56rem" : "2.22rem",
+                    // Same size as the title (h1 above), per request.
+                    fontSize: isMobile ? "1.3rem" : "1.85rem",
                     fontWeight: 600,
                     color: theme.textPrimary,
                     flexShrink: 0,
@@ -324,7 +325,9 @@ export default function Index() {
           )}
 
           {/* Embed mode has no title row to anchor the range label to, so it
-              keeps its own line here instead. */}
+              keeps its own line here instead. Sized at double the original
+              text-sm (0.875rem) baseline, per request — the embed's date
+              size is independent of the main site header above. */}
           {isEmbed && (
             <div className="pb-2" style={{ paddingTop: 16 }}>
               <p style={{ color: theme.textPrimary, fontFamily: theme.fontBody, fontSize: "1.75rem", fontWeight: 600 }}>

@@ -66,8 +66,8 @@ const LIGHT: Theme = {
   surface: "#f2f2f2",       // GRW's own section background
   border: "#e2d8ea",
   textPrimary: "#262626",
-  textMuted: "#595959",     // ~7:1 on white
-  textFaint: "#767676",     // ~4.5:1 on white
+  textMuted: "#404040",     // darkened from #595959 for readability — ~10.4:1 on white
+  textFaint: "#6b6b6b",     // darkened from #767676 — ~5.5:1 on white
   accent: "#CF2C28",
   accentDark: "#a01e1b",
   primary: "#3e1859",       // GRW's own deep purple — active controls (fill only)

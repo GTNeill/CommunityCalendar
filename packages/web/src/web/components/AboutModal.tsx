@@ -242,6 +242,42 @@ export default function AboutModal({ onClose }: { onClose: () => void }) {
               </a>
             </p>
           )}
+
+          <h3
+            style={{
+              fontFamily: theme.fontBody,
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: theme.textMuted,
+              margin: "20px 0 10px",
+            }}
+          >
+            Privacy
+          </h3>
+
+          <p
+            style={{
+              fontFamily: theme.fontBody,
+              fontSize: "0.78rem",
+              lineHeight: 1.5,
+              color: theme.textMuted,
+              margin: 0,
+            }}
+          >
+            This calendar doesn't track you and doesn't use analytics cookies.
+            The only cookie it can set is optional: next to the category
+            filter pills, a{" "}
+            <strong style={{ color: theme.textPrimary }}>Remember my filter</strong>{" "}
+            checkbox lets you save which categories you've selected so they're
+            the default view the next time you visit. It's off by default —
+            nothing is stored unless you check it. If you do, the cookie holds
+            only the names of the categories you picked (e.g. "food,
+            community"), nothing that identifies you, and it stays on your own
+            device for up to a year. Unchecking it, or clearing your browser's
+            cookies, removes it.
+          </p>
         </div>
       </div>
     </div>

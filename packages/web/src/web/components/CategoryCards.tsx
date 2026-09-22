@@ -13,9 +13,12 @@ import FilterTip from "./FilterTip";
 
 interface Props {
   grouped: Record<string, CalEvent[]>;
-  /** Lifted to the page so Cards and Calendar share one cookie-backed selection — see useCategoryFilter. */
+  /** Lifted to the page so Cards and Calendar share one selection — see useCategoryFilter. */
   selectedCats: Set<string>;
   onChangeSelectedCats: (next: Set<string>) => void;
+  /** Whether the visitor has opted in to remembering this filter across visits. */
+  rememberFilter: boolean;
+  onChangeRememberFilter: (next: boolean) => void;
 }
 
 /* ─────────────────────────────────────────────
@@ -688,7 +691,7 @@ function CardEventList({
   );
 }
 
-export default function CategoryCards({ grouped, selectedCats, onChangeSelectedCats }: Props) {
+export default function CategoryCards({ grouped, selectedCats, onChangeSelectedCats, rememberFilter, onChangeRememberFilter }: Props) {
   const { theme } = useTheme();
   const { data: categoriesData } = useCategories();
 
@@ -743,7 +746,7 @@ export default function CategoryCards({ grouped, selectedCats, onChangeSelectedC
 
   return (
     <div>
-      <FilterTip />
+      <FilterTip remember={rememberFilter} onChangeRemember={onChangeRememberFilter} />
       <CategoryFilterBar catMeta={catMeta} selected={selectedCats} onChange={onChangeSelectedCats} />
 
       {visibleCats.length === 0 ? (

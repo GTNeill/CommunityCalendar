@@ -153,9 +153,10 @@ export default function Index() {
   const [offset, setOffset] = useState(0);
   const [zoom, setZoom] = useState(ZOOM_DEFAULT);
   const [search, setSearch] = useState("");
-  // Shared between Cards and Calendar, remembered in a cookie as the
-  // visitor's default view — see useCategoryFilter.
-  const [selectedCats, setSelectedCats] = useCategoryFilter();
+  // Shared between Cards and Calendar; optionally remembered in a cookie as
+  // the visitor's default view when they check "Remember my filter" — see
+  // useCategoryFilter.
+  const { selected: selectedCats, setSelected: setSelectedCats, remember: rememberFilter, setRemember: setRememberFilter } = useCategoryFilter();
   const [aboutOpen, setAboutOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(140);
@@ -630,11 +631,11 @@ export default function Index() {
             data ? <SearchResults query={search} events={data.events} /> : null
           ) : tab === "cards" ? (
             isLoading ? <SkeletonCards /> : data ? (
-              <CategoryCards grouped={data.grouped} selectedCats={selectedCats} onChangeSelectedCats={setSelectedCats} />
+              <CategoryCards grouped={data.grouped} selectedCats={selectedCats} onChangeSelectedCats={setSelectedCats} rememberFilter={rememberFilter} onChangeRememberFilter={setRememberFilter} />
             ) : null
           ) : (
             isLoading ? <SkeletonTimeline /> : data ? (
-              <CalendarGrid events={data.events} start={start} end={end} unit={unit} selectedCats={selectedCats} onChangeSelectedCats={setSelectedCats} />
+              <CalendarGrid events={data.events} start={start} end={end} unit={unit} selectedCats={selectedCats} onChangeSelectedCats={setSelectedCats} rememberFilter={rememberFilter} onChangeRememberFilter={setRememberFilter} />
             ) : null
           )}
         </div>

@@ -19,9 +19,12 @@ interface Props {
   start: Date;
   end: Date;
   unit: RangeUnit;
-  /** Lifted to the page so Cards and Calendar share one cookie-backed selection — see useCategoryFilter. */
+  /** Lifted to the page so Cards and Calendar share one selection — see useCategoryFilter. */
   selectedCats: Set<string>;
   onChangeSelectedCats: (next: Set<string>) => void;
+  /** Whether the visitor has opted in to remembering this filter across visits. */
+  rememberFilter: boolean;
+  onChangeRememberFilter: (next: boolean) => void;
 }
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -611,9 +614,11 @@ interface FilterBarProps {
   events: CalEvent[];
   selected: Set<string>;
   onChange: (next: Set<string>) => void;
+  remember: boolean;
+  onChangeRemember: (next: boolean) => void;
 }
 
-function CategoryFilterBar({ events, selected, onChange }: FilterBarProps) {
+function CategoryFilterBar({ events, selected, onChange, remember, onChangeRemember }: FilterBarProps) {
   const { theme } = useTheme();
   const { data: categoriesData } = useCategories();
 
@@ -653,7 +658,7 @@ function CategoryFilterBar({ events, selected, onChange }: FilterBarProps) {
 
   return (
     <>
-    <FilterTip />
+    <FilterTip remember={remember} onChangeRemember={onChangeRemember} />
     <div
       style={{
         display: "flex",
@@ -719,7 +724,7 @@ function CategoryFilterBar({ events, selected, onChange }: FilterBarProps) {
 }
 
 /* ─── Main export ────────────────────────────────────────────── */
-export default function CalendarGrid({ events, start, end, unit, selectedCats, onChangeSelectedCats }: Props) {
+export default function CalendarGrid({ events, start, end, unit, selectedCats, onChangeSelectedCats, rememberFilter, onChangeRememberFilter }: Props) {
   const { theme } = useTheme();
 
   // Apply filter: empty set = All
@@ -741,7 +746,7 @@ export default function CalendarGrid({ events, start, end, unit, selectedCats, o
 
   return (
     <div>
-      <CategoryFilterBar events={events} selected={selectedCats} onChange={onChangeSelectedCats} />
+      <CategoryFilterBar events={events} selected={selectedCats} onChange={onChangeSelectedCats} remember={rememberFilter} onChangeRemember={onChangeRememberFilter} />
       <div style={{ border: `1px solid ${theme.border}`, borderRadius: 12, overflow: "hidden" }}>
         {/* Month/year title bar — traditional calendar-page header cell */}
         <div

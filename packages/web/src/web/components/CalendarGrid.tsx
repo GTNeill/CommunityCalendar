@@ -19,6 +19,9 @@ interface Props {
   start: Date;
   end: Date;
   unit: RangeUnit;
+  /** Lifted to the page so Cards and Calendar share one cookie-backed selection — see useCategoryFilter. */
+  selectedCats: Set<string>;
+  onChangeSelectedCats: (next: Set<string>) => void;
 }
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -716,9 +719,8 @@ function CategoryFilterBar({ events, selected, onChange }: FilterBarProps) {
 }
 
 /* ─── Main export ────────────────────────────────────────────── */
-export default function CalendarGrid({ events, start, end, unit }: Props) {
+export default function CalendarGrid({ events, start, end, unit, selectedCats, onChangeSelectedCats }: Props) {
   const { theme } = useTheme();
-  const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
 
   // Apply filter: empty set = All
   const filtered = selectedCats.size === 0
@@ -739,7 +741,7 @@ export default function CalendarGrid({ events, start, end, unit }: Props) {
 
   return (
     <div>
-      <CategoryFilterBar events={events} selected={selectedCats} onChange={setSelectedCats} />
+      <CategoryFilterBar events={events} selected={selectedCats} onChange={onChangeSelectedCats} />
       <div style={{ border: `1px solid ${theme.border}`, borderRadius: 12, overflow: "hidden" }}>
         {/* Month/year title bar — traditional calendar-page header cell */}
         <div

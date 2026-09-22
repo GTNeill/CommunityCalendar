@@ -15,6 +15,7 @@ import { timeSince, getRange, getRollingRange, fmtRangeLabel, toISO, type RangeU
 import { useTheme } from "../lib/theme";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useSiteSettings } from "../hooks/useSiteSettings";
+import { useCategoryFilter } from "../hooks/useCategoryFilter";
 
 type Tab = "cards" | "timeline";
 
@@ -152,6 +153,9 @@ export default function Index() {
   const [offset, setOffset] = useState(0);
   const [zoom, setZoom] = useState(ZOOM_DEFAULT);
   const [search, setSearch] = useState("");
+  // Shared between Cards and Calendar, remembered in a cookie as the
+  // visitor's default view — see useCategoryFilter.
+  const [selectedCats, setSelectedCats] = useCategoryFilter();
   const [aboutOpen, setAboutOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(140);
@@ -625,9 +629,13 @@ export default function Index() {
           {search.trim() ? (
             data ? <SearchResults query={search} events={data.events} /> : null
           ) : tab === "cards" ? (
-            isLoading ? <SkeletonCards /> : data ? <CategoryCards grouped={data.grouped} /> : null
+            isLoading ? <SkeletonCards /> : data ? (
+              <CategoryCards grouped={data.grouped} selectedCats={selectedCats} onChangeSelectedCats={setSelectedCats} />
+            ) : null
           ) : (
-            isLoading ? <SkeletonTimeline /> : data ? <CalendarGrid events={data.events} start={start} end={end} unit={unit} /> : null
+            isLoading ? <SkeletonTimeline /> : data ? (
+              <CalendarGrid events={data.events} start={start} end={end} unit={unit} selectedCats={selectedCats} onChangeSelectedCats={setSelectedCats} />
+            ) : null
           )}
         </div>
 

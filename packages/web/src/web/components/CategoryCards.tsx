@@ -13,6 +13,9 @@ import FilterTip from "./FilterTip";
 
 interface Props {
   grouped: Record<string, CalEvent[]>;
+  /** Lifted to the page so Cards and Calendar share one cookie-backed selection — see useCategoryFilter. */
+  selectedCats: Set<string>;
+  onChangeSelectedCats: (next: Set<string>) => void;
 }
 
 /* ─────────────────────────────────────────────
@@ -685,9 +688,8 @@ function CardEventList({
   );
 }
 
-export default function CategoryCards({ grouped }: Props) {
+export default function CategoryCards({ grouped, selectedCats, onChangeSelectedCats }: Props) {
   const { theme } = useTheme();
-  const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
   const { data: categoriesData } = useCategories();
 
   // Today at midnight for filtering past events
@@ -742,7 +744,7 @@ export default function CategoryCards({ grouped }: Props) {
   return (
     <div>
       <FilterTip />
-      <CategoryFilterBar catMeta={catMeta} selected={selectedCats} onChange={setSelectedCats} />
+      <CategoryFilterBar catMeta={catMeta} selected={selectedCats} onChange={onChangeSelectedCats} />
 
       {visibleCats.length === 0 ? (
         <div className="text-center py-20" style={{ color: theme.textMuted }}>

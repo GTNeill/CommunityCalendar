@@ -162,7 +162,11 @@ export async function fetchSquarespaceEvents(
       const ev = mapItem(item, source);
       if (!ev) continue;
       const startMs = new Date(item.startDate as number).getTime();
-      if (startMs < timeMin.getTime() || startMs > timeMax.getTime()) continue;
+      // A missing/invalid endDate falls back to the same 1-hour default
+      // mapItem() uses, so a multi-day event overlapping the window isn't
+      // dropped just because it started before timeMin.
+      const endMs = typeof item.endDate === "number" && item.endDate > startMs ? item.endDate : startMs + 3600_000;
+      if (startMs > timeMax.getTime() || endMs < timeMin.getTime()) continue;
       if (seen.has(ev.id)) continue;
       seen.add(ev.id);
       out.push(ev);

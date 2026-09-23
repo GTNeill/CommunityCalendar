@@ -76,6 +76,52 @@ export function isSameDay(a: string, b: Date): boolean {
   return da.toDateString() === b.toDateString();
 }
 
+/**
+ * The event's last *occupied* calendar day, inclusive.
+ *
+ * All-day DTEND is exclusive per the iCal spec — a 3-day all-day event
+ * (Mon–Wed) is stored with DTEND on Thursday — so that gets pulled back one
+ * day. Timed events use the end instant's own calendar day as-is (a 10pm–2am
+ * event's last day is the day the 2am falls on).
+ */
+export function eventLastDay(ev: { start: string; end: string; isAllDay: boolean }): Date {
+  const start = parseLocalDate(ev.start);
+  if (!ev.end) return start;
+  const end = parseLocalDate(ev.end);
+  if (ev.isAllDay) {
+    const last = new Date(end);
+    last.setDate(last.getDate() - 1);
+    return last < start ? start : last;
+  }
+  return end < start ? start : end;
+}
+
+/**
+ * Does this event occupy the given calendar day at all? Unlike
+ * `isSameDay(ev.start, day)`, this is true for every day a multi-day event
+ * spans — its start day through its inclusive last day — not just the day
+ * it starts.
+ */
+export function eventOccursOnDay(ev: { start: string; end: string; isAllDay: boolean }, day: Date): boolean {
+  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+  const start = parseLocalDate(ev.start);
+  const evStart = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+  const last = eventLastDay(ev);
+  const evLast = new Date(last.getFullYear(), last.getMonth(), last.getDate()).getTime();
+  return dayStart >= evStart && dayStart <= evLast;
+}
+
+/** True once an event spans more than one calendar day — used to keep an
+ *  in-progress multi-day event out of "past" buckets, and to mark
+ *  continuation chips in the grid. */
+export function isMultiDay(ev: { start: string; end: string; isAllDay: boolean }): boolean {
+  const start = parseLocalDate(ev.start);
+  const evStart = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+  const last = eventLastDay(ev);
+  const evLast = new Date(last.getFullYear(), last.getMonth(), last.getDate()).getTime();
+  return evLast > evStart;
+}
+
 /** Midnight today */
 export function todayMidnight(): Date {
   const d = new Date();

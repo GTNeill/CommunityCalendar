@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { CalEvent } from "../lib/calendarUtils";
 import {
   parseLocalDate, fmtTime, fmtDuration, fmtWeekday, fmtDayNum, fmtMonthShort,
-  isSameDay, googleCalendarAddUrl,
+  isSameDay, googleCalendarAddUrl, eventOccursOnDay, eventLastDay, isMultiDay,
 } from "../lib/calendarUtils";
 import { Clock, MapPin, User, Calendar, AlarmClock, ExternalLink, X, CalendarPlus } from "lucide-react";
 import { useTheme } from "../lib/theme";
@@ -83,6 +83,14 @@ function EventPopup({
     : ev.end
       ? `${fmtTime(ev.start, false)} – ${fmtTime(ev.end, false)}`
       : fmtTime(ev.start, false);
+  // A multi-day event's popup shows its full span, e.g. "Sep 23 – Sep 25",
+  // rather than just the start day — clicking any of its continuation chips
+  // should read the same regardless of which day you opened it from.
+  const multiDay = isMultiDay(ev);
+  const lastDay = eventLastDay(ev);
+  const dateLine = multiDay
+    ? `${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)} – ${lastDay.toLocaleString("en-US", { month: "short" })} ${lastDay.getDate()}`
+    : `${fmtWeekday(ev.start)}, ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}`;
 
   return (
     <div
@@ -147,7 +155,7 @@ function EventPopup({
           <Clock size={13} style={{ color: cat, flexShrink: 0, marginTop: 2 }} />
           <div>
             <div style={{ fontSize: "0.82rem", fontWeight: 600, color: theme.textPrimary }}>
-              {fmtWeekday(ev.start)}, {fmtMonthShort(ev.start)} {fmtDayNum(ev.start)}
+              {dateLine}
             </div>
             <div style={{ fontSize: "0.76rem", color: theme.textMuted, marginTop: 1 }}>
               {timeStr}
@@ -211,9 +219,13 @@ function EventPopup({
 }
 
 /* ─── Event Chip ─────────────────────────────────────────────── */
-function EventChip({ ev }: { ev: CalEvent }) {
+function EventChip({ ev, date }: { ev: CalEvent; date?: Date }) {
   const { theme } = useTheme();
   const isMobile = useIsMobile();
+  // Multi-day events now render on every day they span (see eventOccursOnDay),
+  // so a chip on any day after the event's start is a continuation — show
+  // that instead of the (misleading, day-1-only) start time.
+  const isContinuation = !!date && !isSameDay(ev.start, date);
   const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -274,7 +286,11 @@ function EventChip({ ev }: { ev: CalEvent }) {
         role="button"
         tabIndex={0}
         aria-expanded={hovered}
-        aria-label={`${ev.title}, ${fmtWeekday(ev.start)} ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}, ${fmtTime(ev.start, ev.isAllDay)}`}
+        aria-label={
+          isContinuation
+            ? `${ev.title}, continued from ${fmtWeekday(ev.start)} ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}`
+            : `${ev.title}, ${fmtWeekday(ev.start)} ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}, ${fmtTime(ev.start, ev.isAllDay)}`
+        }
         onMouseEnter={enter}
         onMouseLeave={leave}
         onKeyDown={e => {
@@ -308,9 +324,10 @@ function EventChip({ ev }: { ev: CalEvent }) {
           if (ev.htmlLink) window.open(ev.htmlLink, "_blank", "noopener,noreferrer");
         }}
       >
-        {/* dot / diamond — flex-shrink so it stays tiny */}
+        {/* dot / diamond — flex-shrink so it stays tiny; a continuation chip
+            gets a right-pointing arrow instead, to read as "still going". */}
         <span style={{ fontSize: "0.55rem", color: readableOnTint(cat, "1a", theme.bg), fontWeight: 800, flexShrink: 0, marginTop: "0.2em" }}>
-          {ev.isAllDay ? "●" : "◆"}
+          {isContinuation ? "▸" : ev.isAllDay ? "●" : "◆"}
         </span>
         {/* Title wraps freely; no truncation */}
         <span
@@ -324,7 +341,11 @@ function EventChip({ ev }: { ev: CalEvent }) {
             minWidth: 0,
           }}
         >
-          {!ev.isAllDay && (
+          {isContinuation ? (
+            <span style={{ color: readableOnTint(cat, "1a", theme.bg), marginRight: 4, fontSize: "0.65rem", fontWeight: 700, whiteSpace: "nowrap", fontStyle: "italic" }}>
+              cont'd
+            </span>
+          ) : !ev.isAllDay && (
             <span style={{ color: readableOnTint(cat, "1a", theme.bg), marginRight: 4, fontSize: "0.65rem", fontWeight: 700, whiteSpace: "nowrap" }}>
               {fmtTime(ev.start, false).replace(":00", "").toLowerCase()}
             </span>
@@ -408,7 +429,7 @@ function DayCell({
       {/* Event chips — stacked, each wraps its own title */}
       <div>
         {sorted.map(ev => (
-          <EventChip key={ev.id} ev={ev} />
+          <EventChip key={ev.id} ev={ev} date={date} />
         ))}
       </div>
     </div>
@@ -419,7 +440,7 @@ function DayCell({
 function DayView({ events, start }: { events: CalEvent[]; start: Date }) {
   const { theme } = useTheme();
   const isToday = start.toDateString() === new Date().toDateString();
-  const dayEvs = events.filter(ev => isSameDay(ev.start, start));
+  const dayEvs = events.filter(ev => eventOccursOnDay(ev, start));
   const sorted = [...dayEvs].sort((a, b) => {
     if (a.isAllDay && !b.isAllDay) return -1;
     if (!a.isAllDay && b.isAllDay) return 1;
@@ -468,7 +489,7 @@ function DayView({ events, start }: { events: CalEvent[]; start: Date }) {
             No events scheduled for this day.
           </p>
         ) : (
-          sorted.map(ev => <EventChip key={ev.id} ev={ev} />)
+          sorted.map(ev => <EventChip key={ev.id} ev={ev} date={start} />)
         )}
       </div>
     </div>
@@ -531,7 +552,7 @@ function WeekView({ events, start }: { events: CalEvent[]; start: Date }) {
       {/* Cell row — each column stretches to tallest sibling */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", alignItems: "stretch" }}>
         {days.map((d, i) => {
-          const dayEvs = events.filter(ev => isSameDay(ev.start, d));
+          const dayEvs = events.filter(ev => eventOccursOnDay(ev, d));
           return (
             <div key={i} style={{ borderRight: i < 6 ? `1px solid ${theme.border}` : undefined }}>
               <DayCell date={d} events={dayEvs} inMonth={true} />
@@ -596,7 +617,7 @@ function MonthView({ events, start }: { events: CalEvent[]; start: Date }) {
         >
           {week.map((d, di) => {
             const inMonth = d.getMonth() === currentMonth;
-            const dayEvs = events.filter(ev => isSameDay(ev.start, d));
+            const dayEvs = events.filter(ev => eventOccursOnDay(ev, d));
             return (
               <div key={di} style={{ borderRight: di < 6 ? `1px solid ${theme.border}` : undefined }}>
                 <DayCell date={d} events={dayEvs} inMonth={inMonth} />

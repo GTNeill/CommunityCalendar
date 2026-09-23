@@ -1,5 +1,5 @@
 import type { CalEvent } from "../lib/calendarUtils";
-import { fmtDayNum, fmtMonthShort, fmtWeekday, fmtTime, fmtDuration, linkifyDescription, googleMapsUrl, googleCalendarAddUrl } from "../lib/calendarUtils";
+import { fmtDayNum, fmtMonthShort, fmtWeekday, fmtTime, fmtDuration, linkifyDescription, googleMapsUrl, googleCalendarAddUrl, isMultiDay, eventLastDay } from "../lib/calendarUtils";
 import { MapPin, Clock, ExternalLink, User, Calendar, AlarmClock, CalendarPlus } from "lucide-react";
 import { useTheme } from "../lib/theme";
 import { readableOn, readableOnTint } from "../lib/a11y";
@@ -34,6 +34,11 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
     : ev.end
       ? `${fmtTime(ev.start, false)} – ${fmtTime(ev.end, false)}`
       : fmtTime(ev.start, false);
+  const multiDay = isMultiDay(ev);
+  const lastDay = eventLastDay(ev);
+  const dateLine = multiDay
+    ? `${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)} – ${lastDay.toLocaleString("en-US", { month: "short" })} ${lastDay.getDate()}`
+    : `${fmtWeekday(ev.start)}, ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}`;
 
   return (
     <div
@@ -119,7 +124,7 @@ export default function EventDetailCard({ ev }: { ev: CalEvent }) {
           <Clock size={15} style={{ color: categoryColor, flexShrink: 0, marginTop: 2 }} />
           <div>
             <div style={{ fontSize: "0.9rem", fontWeight: 600, color: theme.textPrimary }}>
-              {fmtWeekday(ev.start)}, {fmtMonthShort(ev.start)} {fmtDayNum(ev.start)}
+              {dateLine}
             </div>
             <div style={{ fontSize: "0.82rem", color: theme.textMuted, marginTop: 1 }}>
               {timeStr}

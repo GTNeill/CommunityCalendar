@@ -387,7 +387,10 @@ function parseICS(ics: string, calendarName: string, calendarId: string, timeMin
     if (!rruleStr) {
       const start = startParsed.date;
       const end   = endParsed.date;
-      if (start >= timeMin && start <= timeMax) {
+      // Overlap with the window, not just a start falling inside it — a
+      // multi-day event that started before timeMin (e.g. an all-day event
+      // spanning several days) must still show up on every day it covers.
+      if (start <= timeMax && end >= timeMin) {
         events.push(makeEvent(start, end, uid + (recId ? "_" + recId : "")));
       }
       continue;
@@ -423,13 +426,16 @@ function parseICS(ics: string, calendarName: string, calendarId: string, timeMin
           const iso = occ.toISOString().replace("Z", "");
           start = zonedWallClockToUTC(iso, dtStartTzid || DEFAULT_TZ);
         }
-        if (start < timeMin || start > timeMax) continue;
         const end = new Date(start.getTime() + duration);
+        // Overlap with the window (see the non-recurring branch above) —
+        // covers a recurring event whose duration spans past timeMax or
+        // whose occurrence started just before timeMin.
+        if (start > timeMax || end < timeMin) continue;
         const instanceUid = `${uid}_${start.toISOString()}`;
         events.push(makeEvent(start, end, instanceUid));
       }
     } catch (_e) {
-      if (startParsed.date >= timeMin && startParsed.date <= timeMax) {
+      if (startParsed.date <= timeMax && endParsed.date >= timeMin) {
         events.push(makeEvent(startParsed.date, endParsed.date, uid));
       }
     }

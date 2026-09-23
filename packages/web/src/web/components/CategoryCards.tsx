@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { CalEvent } from "../lib/calendarUtils";
 import {
-  fmtDayNum, fmtMonthShort, fmtWeekday, fmtTime, fmtDuration, isToday, parseLocalDate, googleCalendarAddUrl
+  fmtDayNum, fmtMonthShort, fmtWeekday, fmtTime, fmtDuration, isToday, parseLocalDate, googleCalendarAddUrl,
+  isMultiDay, eventLastDay, eventOccursOnDay,
 } from "../lib/calendarUtils";
 import { MapPin, Clock, ExternalLink, User, Calendar, AlarmClock, X, CalendarPlus } from "lucide-react";
 import { useTheme } from "../lib/theme";
@@ -84,6 +85,11 @@ function EventPopup({
     : ev.end
       ? `${fmtTime(ev.start, false)} – ${fmtTime(ev.end, false)}`
       : fmtTime(ev.start, false);
+  const multiDay = isMultiDay(ev);
+  const lastDay = eventLastDay(ev);
+  const dateLine = multiDay
+    ? `${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)} – ${lastDay.toLocaleString("en-US", { month: "short" })} ${lastDay.getDate()}`
+    : `${fmtWeekday(ev.start)}, ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}`;
 
   const titleId = `event-popup-title-${ev.id}`;
 
@@ -181,7 +187,7 @@ function EventPopup({
           <Clock size={14} style={{ color: categoryColor, flexShrink: 0, marginTop: 2 }} />
           <div>
             <div style={{ fontSize: "0.875rem", fontWeight: 600, color: theme.textPrimary }}>
-              {fmtWeekday(ev.start)}, {fmtMonthShort(ev.start)} {fmtDayNum(ev.start)}
+              {dateLine}
             </div>
             <div style={{ fontSize: "0.8rem", color: theme.textMuted, marginTop: 1 }}>
               {timeStr}
@@ -286,10 +292,14 @@ function EventPopup({
 function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }) {
   const { theme } = useTheme();
   const isMobile = useIsMobile();
-  const today = isToday(ev.start);
+  // Ongoing multi-day events should still read as "Today" on every day they
+  // span, not just their start day.
+  const today = eventOccursOnDay(ev, new Date());
   const [hovered, setHovered] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
   const dur = fmtDuration(ev.start, ev.end, ev.isAllDay);
+  const multiDay = isMultiDay(ev);
+  const lastDay = eventLastDay(ev);
 
   // Delay popup by 300ms to avoid flicker on quick mouse-overs
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -379,7 +389,11 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
         role="button"
         tabIndex={0}
         aria-expanded={hovered}
-        aria-label={`${ev.title}, ${fmtWeekday(ev.start)} ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}, ${fmtTime(ev.start, ev.isAllDay)}`}
+        aria-label={
+          multiDay
+            ? `${ev.title}, ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)} through ${lastDay.toLocaleString("en-US", { month: "short" })} ${lastDay.getDate()}`
+            : `${ev.title}, ${fmtWeekday(ev.start)} ${fmtMonthShort(ev.start)} ${fmtDayNum(ev.start)}, ${fmtTime(ev.start, ev.isAllDay)}`
+        }
         className="flex gap-4"
         style={{
           padding: "10px 14px",
@@ -423,6 +437,11 @@ function EventRow({ ev, categoryColor }: { ev: CalEvent; categoryColor: string }
           <div style={{ fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: readableOnTint(categoryColor, "14", theme.surface) }}>
             {fmtMonthShort(ev.start)}
           </div>
+          {multiDay && (
+            <div style={{ fontSize: "0.55rem", fontWeight: 700, color: readableOnTint(categoryColor, "14", theme.surface), marginTop: 2, whiteSpace: "nowrap" }}>
+              → {lastDay.toLocaleString("en-US", { month: "short" })} {lastDay.getDate()}
+            </div>
+          )}
         </div>
 
         {/* Info */}
@@ -788,10 +807,10 @@ export default function CategoryCards({ grouped, selectedCats, onChangeSelectedC
 
             // Split into future (today onward) and past, each sorted ascending
             const futureEvents = allEvents
-              .filter(ev => parseLocalDate(ev.start) >= todayMid)
+              .filter(ev => eventLastDay(ev) >= todayMid)
               .sort((a, b) => parseLocalDate(a.start).getTime() - parseLocalDate(b.start).getTime());
             const pastEvents = allEvents
-              .filter(ev => parseLocalDate(ev.start) < todayMid)
+              .filter(ev => eventLastDay(ev) < todayMid)
               .sort((a, b) => parseLocalDate(b.start).getTime() - parseLocalDate(a.start).getTime()); // most recent first
 
             // Total visible = future events up front; past events scroll below

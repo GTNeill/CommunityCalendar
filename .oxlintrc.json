@@ -17,8 +17,7 @@
   "ignorePatterns": [
     "dist/**",
     "dist-electron/**",
-    ".expo/**",
-    "packages/web/public/runable.js"
+    ".expo/**"
   ],
   "env": {
     "builtin": true,

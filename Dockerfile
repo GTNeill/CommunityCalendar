@@ -42,14 +42,17 @@ COPY packages/web/package.json ./package.json
 RUN bun install --production --omit=peer \
  && rm -rf /root/.bun/install/cache
 
-# Category data, site settings and session DB live on a mounted volume; make the
-# (otherwise non-root) server's data dir writable.
+# Category data, site settings and session DB live on a mounted volume. Railway mounts
+# volumes root-owned at *runtime*, so a build-time chown is discarded — the entrypoint
+# below takes ownership once the volume is mounted, then drops to the unprivileged user.
 ENV DATA_DIR=/data
-RUN mkdir -p /data && chown -R bun:bun /data
+RUN mkdir -p /data \
+ && printf '#!/bin/sh\nset -e\nif [ -d /data ]; then chown -R bun:bun /data 2>/dev/null || true; fi\nexec runuser -u bun -- "$@"\n' > /usr/local/bin/entrypoint.sh \
+ && chmod +x /usr/local/bin/entrypoint.sh
 
 COPY --from=builder /app/packages/web/src ./packages/web/src
 COPY --from=builder /app/packages/web/dist ./packages/web/dist
 
-USER bun
 EXPOSE 3000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["bun", "packages/web/src/server.ts"]

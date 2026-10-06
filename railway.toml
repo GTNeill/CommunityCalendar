@@ -1,12 +1,17 @@
+# Community Calendar — Railway deployment.
+#
+# Builds the hardened, web-only Dockerfile rather than nixpacks installing the whole
+# workspace. Runtime ships only packages/web production deps (no mobile/desktop/build
+# tooling); see GRO-LOT-SECURITY-NOTES.md.
 [build]
-builder = "nixpacks"
-buildCommand = "bun install && bun run build:web"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "bun run packages/web/src/server.ts"
+startCommand = "bun /app/packages/web/src/server.ts"
 healthcheckPath = "/api/categories"
 healthcheckTimeout = 30
-restartPolicyType = "on_failure"
+restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
 [environments.production.deploy]

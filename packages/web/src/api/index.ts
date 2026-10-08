@@ -225,7 +225,18 @@ function saveCategories(cats: Omit<CategoryDef, "match">[]): void {
 let runtimeCategories: CategoryDef[] = [FALLBACK_CATEGORY];
 runtimeCategories = loadCategories();
 
-function categorize(title: string, description: string = ""): CategoryDef {
+function categorize(title: string, description: string = "", organizer: string = "", sources: string[] = []): CategoryDef {
+  // Pass 0 — source/organizer override. Dedupe can replace a source-branded
+  // title (e.g. "GRO Neighborhood Tree Walk" → "Neighborhood Tree Walk")
+  // with a neighbor-feed title, so the source org a category is named after
+  // would never match the title and the event lands in the wrong category.
+  // Pin such events to their org's category before any keyword matching.
+  const GRO_SOURCE = /greater rockwell|\bgro\b/i;
+  const orgText = [organizer, ...sources].filter(Boolean).join("\n");
+  if (orgText && GRO_SOURCE.test(orgText)) {
+    const gro = runtimeCategories.find(c => c.key === "gro");
+    if (gro) return gro;
+  }
   // Pass 1 — title only (unchanged, highest-confidence match).
   for (const cat of runtimeCategories) {
     if (cat.key === "other") continue; // always last-resort
@@ -550,7 +561,7 @@ async function fetchICalEvents(
 function shapeEvent(ev: any) {
   const title = ev.summary ?? "(no title)";
   const desc  = ev.description ?? "";
-  const cat   = categorize(title, desc);
+  const cat   = categorize(title, desc, ev.organizer?.displayName ?? "", Array.isArray(ev.sources) ? ev.sources : []);
   const startRaw = ev.start?.dateTime ?? ev.start?.date ?? "";
   const endRaw   = ev.end?.dateTime ?? ev.end?.date ?? "";
   const isAllDay = !ev.start?.dateTime;
